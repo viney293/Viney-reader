@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Vineys Reader">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Libre+Caslon+Text:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Libre+Caslon+Text:ital@0;1&family=Inter:wght@400;500;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
   :root{
     --stage-bg-1: #1c1620;
@@ -32,6 +32,8 @@
     --ink-sepia: #4a3421;
     --paper-night: #d9d3c7;
     --ink-night: #211c16;
+    --paper-contrast: #ffffff;
+    --ink-contrast: #000000;
     --page-w: 440px;
     --page-h: 620px;
     --scale: 1;
@@ -84,6 +86,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    row-gap: 10px;
     padding: 18px 24px;
     z-index: 50;
     font-family: 'Inter', sans-serif;
@@ -140,26 +144,120 @@
     background: rgba(255,255,255,0.06);
     border: none;
     color: #e8ddcf;
-    width: 30px;
-    height: 32px;
+    width: 34px;
+    height: 36px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 15px;
   }
   .font-controls button:hover { background: rgba(255,255,255,0.14); }
+  .font-controls button:focus-visible { outline: 2px solid var(--brass); outline-offset: -2px; }
   .font-controls .divider { width: 1px; height: 18px; background: rgba(255,255,255,0.15); }
 
-  .theme-swatches { display: flex; gap: 6px; align-items: center; }
+  .theme-swatches { display: flex; gap: 8px; align-items: center; }
   .swatch {
-    width: 22px; height: 22px;
+    width: 28px; height: 28px;
     border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.25);
     cursor: pointer;
     padding: 0;
   }
+  .swatch:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
   .swatch[data-theme="day"] { background: var(--paper-day); }
   .swatch[data-theme="sepia"] { background: var(--paper-sepia); }
   .swatch[data-theme="night"] { background: var(--paper-night); }
-  .swatch.active { border-color: var(--brass); }
+  .swatch[data-theme="contrast"] { background: conic-gradient(#000 0 50%, #fff 50% 100%); }
+  .swatch.active { border-color: var(--brass); box-shadow: 0 0 0 2px rgba(199,154,75,0.35); }
+
+  /* ---------- Settings panel (Display & Accessibility) ---------- */
+  .settings-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,7,9,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  .settings-backdrop.open { display: flex; }
+  .settings-panel {
+    width: min(400px, 90vw);
+    max-height: 85vh;
+    overflow-y: auto;
+    background: #241c22;
+    border: 1px solid rgba(199,154,75,0.3);
+    border-radius: 6px;
+    padding: 22px;
+  }
+  .settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .settings-header h2 {
+    font-family: 'Fraunces', serif;
+    color: var(--brass);
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .settings-close {
+    background: none;
+    border: none;
+    color: #c9beb2;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  .settings-close:hover { color: #ece1d4; }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .settings-row:first-of-type { border-top: none; }
+  .settings-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #e8ddcf;
+  }
+  .settings-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #e8ddcf;
+    cursor: pointer;
+  }
+  .settings-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--brass);
+    cursor: pointer;
+  }
+  .settings-hint {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: #8a8078;
+    line-height: 1.5;
+    padding-top: 10px;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
 
   /* ---------- The book ---------- */
   .book-wrap {
@@ -282,6 +380,10 @@
   body[data-theme="day"]   .page-face { background: var(--paper-day);   color: var(--ink-day); }
   body[data-theme="sepia"] .page-face { background: var(--paper-sepia); color: var(--ink-sepia); }
   body[data-theme="night"] .page-face { background: var(--paper-night); color: var(--ink-night); }
+  body[data-theme="contrast"] .page-face { background: var(--paper-contrast); color: var(--ink-contrast); }
+  body[data-theme="contrast"] .page-content { font-weight: 500; }
+
+  body.dyslexia-font .page-content { font-family: 'Atkinson Hyperlegible', sans-serif; letter-spacing: 0.01em; }
 
   .page-face::after {
     content: "";
@@ -294,14 +396,28 @@
   .page-content {
     font-family: 'Libre Caslon Text', serif;
     font-size: var(--body-size, 17px);
-    line-height: 1.62;
-    text-align: justify;
-    hyphens: auto;
+    line-height: var(--line-height, 1.62);
+    text-align: left;
+    hyphens: none;
     height: 100%;
     overflow: hidden;
   }
   .page-content p { margin: 0 0 1em 0; }
   .page-content p:first-child { margin-top: 0; }
+
+  .page-content.cover-page {
+    position: absolute;
+    top: -42px; left: -38px; right: -38px; bottom: -50px;
+    margin: 0;
+    overflow: hidden;
+  }
+  .cover-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
 
   .page-content.title-page {
     display: flex;
@@ -626,24 +742,68 @@
     <div class="topbar">
       <div class="brand">Vineys Reader <span class="book-title" id="brandTitle">The Coloured Bible</span></div>
       <div class="topbar-controls">
-        <div class="theme-swatches" role="group" aria-label="Paper tone">
-          <button class="swatch" data-theme="day" title="Day paper" aria-label="Day paper"></button>
-          <button class="swatch active" data-theme="sepia" title="Sepia paper" aria-label="Sepia paper"></button>
-          <button class="swatch" data-theme="night" title="Night paper" aria-label="Night paper"></button>
-        </div>
-        <div class="font-controls" aria-label="Text size">
-          <button id="fontMinus" aria-label="Smaller text">A−</button>
-          <div class="divider"></div>
-          <button id="fontPlus" aria-label="Larger text">A+</button>
-        </div>
-        <div class="font-controls" aria-label="Zoom">
-          <button id="zoomMinus" aria-label="Zoom out">−</button>
-          <div class="divider"></div>
-          <button id="zoomReset" aria-label="Reset zoom" title="Reset zoom">⤢</button>
-          <div class="divider"></div>
-          <button id="zoomPlus" aria-label="Zoom in">+</button>
-        </div>
+        <button class="chrome-btn" id="openSettings" aria-haspopup="dialog">Display &amp; Accessibility</button>
         <button class="chrome-btn" id="openLoad">Load a book</button>
+      </div>
+    </div>
+
+    <div class="settings-backdrop" id="settingsBackdrop">
+      <div class="settings-panel" role="dialog" aria-modal="true" aria-label="Display and accessibility settings">
+        <div class="settings-header">
+          <h2>Display &amp; Accessibility</h2>
+          <button class="settings-close" id="closeSettings" aria-label="Close settings">&times;</button>
+        </div>
+
+        <div class="settings-row">
+          <span class="settings-label">Paper tone</span>
+          <div class="theme-swatches" role="group" aria-label="Paper tone">
+            <button class="swatch" data-theme="day" title="Day paper" aria-label="Day paper"></button>
+            <button class="swatch active" data-theme="sepia" title="Sepia paper" aria-label="Sepia paper"></button>
+            <button class="swatch" data-theme="night" title="Night paper" aria-label="Night paper"></button>
+            <button class="swatch" data-theme="contrast" title="High contrast (black on white)" aria-label="High contrast paper"></button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <span class="settings-label">Text size</span>
+          <div class="font-controls" aria-label="Text size">
+            <button id="fontMinus" aria-label="Smaller text">A−</button>
+            <div class="divider"></div>
+            <button id="fontPlus" aria-label="Larger text">A+</button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <span class="settings-label">Line spacing</span>
+          <div class="font-controls" aria-label="Line spacing">
+            <button id="lineMinus" aria-label="Tighter line spacing">−</button>
+            <div class="divider"></div>
+            <button id="linePlus" aria-label="Roomier line spacing">+</button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <span class="settings-label">Zoom</span>
+          <div class="font-controls" aria-label="Zoom">
+            <button id="zoomMinus" aria-label="Zoom out">−</button>
+            <div class="divider"></div>
+            <button id="zoomReset" aria-label="Reset zoom" title="Reset zoom">⤢</button>
+            <div class="divider"></div>
+            <button id="zoomPlus" aria-label="Zoom in">+</button>
+          </div>
+        </div>
+
+        <label class="settings-toggle">
+          <input type="checkbox" id="dyslexiaToggle">
+          <span>Dyslexia-friendly font (Atkinson Hyperlegible)</span>
+        </label>
+
+        <label class="settings-toggle">
+          <input type="checkbox" id="reduceMotionToggle">
+          <span>Reduce page-turn motion</span>
+        </label>
+
+        <div class="settings-hint">Your device's own "reduce motion" setting is respected automatically too — the toggle above is for turning it off just for this app.</div>
       </div>
     </div>
 
@@ -693,6 +853,7 @@
         <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
       </div>
       <div class="loading-note" id="loadingNote" style="display:none;">Paginating…</div>
+      <div class="sr-only" id="pageAnnouncer" aria-live="polite"></div>
     </div>
   </div>
 
@@ -1117,13 +1278,16 @@
     pages: [],       // array of HTML strings, index 0 = title page, last = end page
     current: 0,      // index of the RIGHT-hand page currently shown
     fontSize: 17,
+    lineHeight: 1.62,
     theme: "sepia",
     animating: false,
     fitScale: 1,
-    zoom: 1
+    zoom: 1,
+    reduceMotion: false
   };
 
   var ZOOM_MIN = 0.6, ZOOM_MAX = 2.2, ZOOM_STEP = 0.15;
+  var LINE_MIN = 1.3, LINE_MAX = 2.2, LINE_STEP = 0.1;
 
   function buildFlow(rawText){
     var paras = rawText.split(/\n\s*\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
@@ -1159,6 +1323,9 @@
     var flow = state.flow;
     var maxHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--page-h')) - 92; // minus vertical padding
     measurer.style.fontSize = state.fontSize + "px";
+    measurer.className = "page-content";
+    if (document.body.classList.contains("dyslexia-font")) measurer.style.fontFamily = "'Atkinson Hyperlegible', sans-serif";
+    else measurer.style.fontFamily = "";
 
     function fits(end, start){
       measurer.innerHTML = renderFlowSlice(flow.slice(start, end));
@@ -1186,6 +1353,7 @@
     }
 
     var pages = [];
+    pages.push({ type: "cover" });
     pages.push({ type: "title" });
     contentPages.forEach(function(slice, i){
       pages.push({ type: "content", html: renderFlowSlice(slice), num: i + 1 });
@@ -1199,6 +1367,12 @@
 
   function pageMarkup(pageObj){
     if (!pageObj) return { content: "", folio: "" };
+    if (pageObj.type === "cover"){
+      return {
+        content: '<img src="cover.jpg" alt="Cover: ' + escapeHtml(state.title) + '" class="cover-image">',
+        folio: ""
+      };
+    }
     if (pageObj.type === "title"){
       var authorLine = state.author ? '<div class="t-sub">' + escapeHtml(state.author) + '</div>' : '';
       var subtitleLine = state.subtitle ? '<div class="t-subtitle">' + escapeHtml(state.subtitle) + '</div>' : '';
@@ -1218,6 +1392,14 @@
     return { content: pageObj.html, folio: String(pageObj.num) };
   }
 
+  function pageTypeClass(pageObj){
+    if (!pageObj) return "";
+    if (pageObj.type === "cover") return " cover-page";
+    if (pageObj.type === "title") return " title-page";
+    if (pageObj.type === "end") return " end-page";
+    return "";
+  }
+
   // ---------- Render (static, no animation) ----------
   function renderStatic(){
     var pages = state.pages;
@@ -1227,17 +1409,18 @@
     var rightObj = pages[cur];
 
     var l = pageMarkup(leftObj);
-    leftContent.className = "page-content" + (leftObj && leftObj.type === "title" ? " title-page" : leftObj && leftObj.type === "end" ? " end-page" : "");
+    leftContent.className = "page-content" + pageTypeClass(leftObj);
     leftContent.innerHTML = l.content;
     leftFolio.textContent = l.folio;
 
     var r = pageMarkup(rightObj);
-    underContent.className = "page-content" + (rightObj && rightObj.type === "title" ? " title-page" : rightObj && rightObj.type === "end" ? " end-page" : "");
+    underContent.className = "page-content" + pageTypeClass(rightObj);
     underContent.innerHTML = r.content;
     underFolio.textContent = r.folio;
 
     flipLeaf.classList.remove("animating");
     flipLeaf.style.transform = "rotateY(0deg)";
+    flipLeaf.style.visibility = "hidden"; // idle: let the right-page-under show through underneath
     frontContent.innerHTML = ""; backContent.innerHTML = "";
     frontFolio.textContent = ""; backFolio.textContent = "";
 
@@ -1252,6 +1435,8 @@
     ribbon.style.right = (46 + (cur / Math.max(1, total - 1)) * 160) + "px";
     $("prevBtn").disabled = cur <= 0;
     $("nextBtn").disabled = cur >= total - 1;
+    var announcer = $("pageAnnouncer");
+    if (announcer) announcer.textContent = "Page " + Math.min(cur + 1, total) + " of " + total;
   }
 
   // ---------- Flip animation ----------
@@ -1269,6 +1454,13 @@
     var target = cur + direction;
     if (target < 0 || target >= pages.length) return;
 
+    var osReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (state.reduceMotion || osReducedMotion){
+      state.current = target;
+      renderStatic();
+      return;
+    }
+
     var L = Math.min(cur, target);
     var pageL = pages[L];       // near/front side
     var pageR = pages[L + 1];   // far/back side
@@ -1276,23 +1468,24 @@
     var mL = pageMarkup(pageL);
     var mR = pageMarkup(pageR);
 
-    frontContent.className = "page-content" + (pageL && pageL.type === "title" ? " title-page" : pageL && pageL.type === "end" ? " end-page" : "");
+    frontContent.className = "page-content" + pageTypeClass(pageL);
     frontContent.innerHTML = mL.content;
     frontFolio.textContent = mL.folio;
 
-    backContent.className = "page-content" + (pageR && pageR.type === "title" ? " title-page" : pageR && pageR.type === "end" ? " end-page" : "");
+    backContent.className = "page-content" + pageTypeClass(pageR);
     backContent.innerHTML = mR.content;
     backFolio.textContent = mR.folio;
 
     // under-layer always shows the destination page
     var destObj = pages[target];
     var mDest = pageMarkup(destObj);
-    underContent.className = "page-content" + (destObj && destObj.type === "title" ? " title-page" : destObj && destObj.type === "end" ? " end-page" : "");
+    underContent.className = "page-content" + pageTypeClass(destObj);
     underContent.innerHTML = mDest.content;
     underFolio.textContent = mDest.folio;
 
     state.animating = true;
     flipLeaf.classList.remove("animating");
+    flipLeaf.style.visibility = "visible"; // reveal the leaf only while it's actually flipping
 
     if (direction === 1){
       flipLeaf.style.transform = "rotateY(0deg)";
@@ -1390,6 +1583,17 @@
     reflow();
   });
 
+  $("lineMinus").addEventListener("click", function(){
+    state.lineHeight = Math.max(LINE_MIN, Math.round((state.lineHeight - LINE_STEP) * 10) / 10);
+    document.documentElement.style.setProperty("--line-height", state.lineHeight);
+    reflow();
+  });
+  $("linePlus").addEventListener("click", function(){
+    state.lineHeight = Math.min(LINE_MAX, Math.round((state.lineHeight + LINE_STEP) * 10) / 10);
+    document.documentElement.style.setProperty("--line-height", state.lineHeight);
+    reflow();
+  });
+
   document.querySelectorAll(".swatch").forEach(function(sw){
     sw.addEventListener("click", function(){
       document.querySelectorAll(".swatch").forEach(function(s){ s.classList.remove("active"); });
@@ -1399,9 +1603,25 @@
     });
   });
 
+  $("dyslexiaToggle").addEventListener("change", function(e){
+    document.body.classList.toggle("dyslexia-font", e.target.checked);
+    reflow();
+  });
+
+  $("reduceMotionToggle").addEventListener("change", function(e){
+    state.reduceMotion = e.target.checked;
+  });
+
+  var settingsBackdrop = $("settingsBackdrop");
+  $("openSettings").addEventListener("click", function(){ settingsBackdrop.classList.add("open"); });
+  $("closeSettings").addEventListener("click", function(){ settingsBackdrop.classList.remove("open"); });
+  settingsBackdrop.addEventListener("click", function(e){
+    if (e.target === settingsBackdrop) settingsBackdrop.classList.remove("open");
+  });
+
   function reflow(){
     document.documentElement.style.setProperty("--body-size", state.fontSize + "px");
-    var root = document.querySelector(":root");
+    document.documentElement.style.setProperty("--line-height", state.lineHeight);
     document.body.style.setProperty("--body-size", state.fontSize + "px");
     document.querySelectorAll(".page-content").forEach(function(el){ el.style.fontSize = state.fontSize + "px"; });
     paginate();
@@ -1517,6 +1737,7 @@
   rescale();
   updateZoomChrome();
   document.documentElement.style.setProperty("--body-size", state.fontSize + "px");
+  document.documentElement.style.setProperty("--line-height", state.lineHeight);
   paginate();
   renderStatic();
 
