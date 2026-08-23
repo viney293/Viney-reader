@@ -3,8 +3,3 @@ compatibility_date = "2025-06-01"
 
 [assets]
 directory = "./"
-
-# This is an "assets-only" Worker — it just serves index.html, buy.html,
-# manifest.json, sw.js, and the icons/ folder as a static site. There's no
-# custom server code here (unlike vineys-payment), so no "main" file and
-# no bindings/variables are needed for this one.
