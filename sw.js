@@ -1,7 +1,7 @@
 // Vineys Reader — service worker
 // Caches the app shell so it installs as an app and works offline.
 
-var CACHE_NAME = "vineys-reader-v2";
+var CACHE_NAME = "vineys-reader-v3";
 var ASSETS = [
   "./",
   "./index.html",
@@ -31,8 +31,6 @@ self.addEventListener("activate", function(event){
   );
 });
 
-// Cache-first for app shell, falling back to network; network-first fallback
-// for anything not pre-cached (e.g. the Google Fonts CSS/woff2).
 self.addEventListener("fetch", function(event){
   if (event.request.method !== "GET") return;
   event.respondWith(
