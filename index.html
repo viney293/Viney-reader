@@ -962,23 +962,54 @@
     return "";
   }
 
+  // A "pair index" of 0 is the special opening spread: blank left, pages[0] alone
+  // on the right (like a real book's title page). Every other pair index is an
+  // odd number, showing pages[idx] on the left and pages[idx+1] on the right —
+  // exactly like a real book, where turning a page reveals two brand-new pages.
+  function getDisplayedPair(idx){
+    var pages = state.pages;
+    if (idx === 0) return { left: undefined, right: pages[0] };
+    return { left: pages[idx], right: pages[idx + 1] };
+  }
+
+  function computeTarget(cur, direction, pageCount, total){
+    var target;
+    if (pageCount === 1){
+      target = cur + direction;
+    } else {
+      if (direction === 1) target = (cur === 0) ? 1 : cur + 2;
+      else target = (cur <= 1) ? 0 : cur - 2;
+    }
+    if (target < 0 || target >= total || target === cur) return null;
+    return target;
+  }
+
   // ---------- Render (static, no animation) ----------
   function renderStatic(){
     var pages = state.pages;
     var cur = state.current;
 
-    var leftObj = pages[cur - 1];
-    var rightObj = pages[cur];
+    if (state.pageCount === 1){
+      var only = pages[cur];
+      var m = pageMarkup(only);
+      underContent.className = "page-content" + pageTypeClass(only);
+      underContent.innerHTML = m.content;
+      underFolio.textContent = m.folio;
+      leftContent.innerHTML = "";
+      leftFolio.textContent = "";
+    } else {
+      var pair = getDisplayedPair(cur);
 
-    var l = pageMarkup(leftObj);
-    leftContent.className = "page-content" + pageTypeClass(leftObj);
-    leftContent.innerHTML = l.content;
-    leftFolio.textContent = l.folio;
+      var l = pageMarkup(pair.left);
+      leftContent.className = "page-content" + pageTypeClass(pair.left);
+      leftContent.innerHTML = l.content;
+      leftFolio.textContent = l.folio;
 
-    var r = pageMarkup(rightObj);
-    underContent.className = "page-content" + pageTypeClass(rightObj);
-    underContent.innerHTML = r.content;
-    underFolio.textContent = r.folio;
+      var r = pageMarkup(pair.right);
+      underContent.className = "page-content" + pageTypeClass(pair.right);
+      underContent.innerHTML = r.content;
+      underFolio.textContent = r.folio;
+    }
 
     flipLeaf.classList.remove("animating");
     flipLeaf.style.transform = "rotateY(0deg)";
@@ -995,8 +1026,8 @@
     progressLabel.textContent = Math.min(cur + 1, total) + " / " + total;
     progressFill.style.width = (total > 1 ? (cur / (total - 1)) * 100 : 0) + "%";
     ribbon.style.right = (46 + (cur / Math.max(1, total - 1)) * 160) + "px";
-    $("prevBtn").disabled = cur <= 0;
-    $("nextBtn").disabled = cur >= total - 1;
+    $("prevBtn").disabled = computeTarget(cur, -1, state.pageCount, total) === null;
+    $("nextBtn").disabled = computeTarget(cur, 1, state.pageCount, total) === null;
     var announcer = $("pageAnnouncer");
     if (announcer) announcer.textContent = "Page " + Math.min(cur + 1, total) + " of " + total;
   }
@@ -1009,8 +1040,8 @@
     if (state.animating) return;
     var pages = state.pages;
     var cur = state.current;
-    var target = cur + direction;
-    if (target < 0 || target >= pages.length) return;
+    var target = computeTarget(cur, direction, state.pageCount, pages.length);
+    if (target === null) return;
 
     var osReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (osReducedMotion){
@@ -1019,30 +1050,55 @@
       return;
     }
 
-    var L = Math.min(cur, target);
-    var pageL = pages[L];
-    var pageR = pages[L + 1];
-
-    var mL = pageMarkup(pageL);
-    var mR = pageMarkup(pageR);
-
-    frontContent.className = "page-content" + pageTypeClass(pageL);
-    frontContent.innerHTML = mL.content;
-    frontFolio.textContent = mL.folio;
-
-    backContent.className = "page-content" + pageTypeClass(pageR);
-    backContent.innerHTML = mR.content;
-    backFolio.textContent = mR.folio;
-
-    var destObj = pages[target];
-    var mDest = pageMarkup(destObj);
-    underContent.className = "page-content" + pageTypeClass(destObj);
-    underContent.innerHTML = mDest.content;
-    underFolio.textContent = mDest.folio;
-
     state.animating = true;
     flipLeaf.classList.remove("animating");
     flipLeaf.style.visibility = "visible";
+
+    if (state.pageCount === 1){
+      // Single page at a time: cur and target are always adjacent, so this is
+      // a plain one-leaf flip between exactly those two pages.
+      var L = Math.min(cur, target);
+      var pageL = pages[L];
+      var pageR = pages[L + 1];
+      var mL = pageMarkup(pageL);
+      var mR = pageMarkup(pageR);
+      frontContent.className = "page-content" + pageTypeClass(pageL);
+      frontContent.innerHTML = mL.content;
+      frontFolio.textContent = mL.folio;
+      backContent.className = "page-content" + pageTypeClass(pageR);
+      backContent.innerHTML = mR.content;
+      backFolio.textContent = mR.folio;
+
+      var destObj = pages[target];
+      var mDest = pageMarkup(destObj);
+      underContent.className = "page-content" + pageTypeClass(destObj);
+      underContent.innerHTML = mDest.content;
+      underFolio.textContent = mDest.folio;
+    } else {
+      // Two-page spread: turning reveals a whole new pair, just like a real
+      // book. The left page swaps instantly (no animation); the right page
+      // is what visibly flips, from the old right page to the new one.
+      var oldPair = getDisplayedPair(cur);
+      var newPair = getDisplayedPair(target);
+
+      var lm = pageMarkup(newPair.left);
+      leftContent.className = "page-content" + pageTypeClass(newPair.left);
+      leftContent.innerHTML = lm.content;
+      leftFolio.textContent = lm.folio;
+
+      var mFront = pageMarkup(oldPair.right);
+      var mBack = pageMarkup(newPair.right);
+      frontContent.className = "page-content" + pageTypeClass(oldPair.right);
+      frontContent.innerHTML = mFront.content;
+      frontFolio.textContent = mFront.folio;
+      backContent.className = "page-content" + pageTypeClass(newPair.right);
+      backContent.innerHTML = mBack.content;
+      backFolio.textContent = mBack.folio;
+
+      underContent.className = "page-content" + pageTypeClass(newPair.right);
+      underContent.innerHTML = mBack.content;
+      underFolio.textContent = mBack.folio;
+    }
 
     if (direction === 1){
       flipLeaf.style.transform = "rotateY(0deg)";
@@ -1068,6 +1124,18 @@
 
   // ---------- Page-layout mode (1 page / 2 page) ----------
   function setPageCount(n){
+    if (n !== state.pageCount){
+      if (n === 1){
+        // Switching to single-page: point at whichever page was the "active"
+        // (right-hand) page of the current spread.
+        state.current = (state.current === 0) ? 0 : state.current + 1;
+      } else {
+        // Switching to two-page: snap to the nearest valid pair-start index
+        // (0, or the nearest odd number at/below the current single-page index).
+        var s = state.current;
+        state.current = (s <= 0) ? 0 : (s % 2 === 1 ? s : s - 1);
+      }
+    }
     state.pageCount = n;
     document.documentElement.style.setProperty("--page-count", n);
     leavesArea.classList.toggle("single-page-mode", n === 1);
@@ -1076,6 +1144,7 @@
     $("twoPageBtn").classList.toggle("active", n === 2);
     $("onePageBtn").setAttribute("aria-pressed", n === 1 ? "true" : "false");
     $("twoPageBtn").setAttribute("aria-pressed", n === 2 ? "true" : "false");
+    renderStatic();
     rescale();
   }
   $("onePageBtn").addEventListener("click", function(){ setPageCount(1); });
