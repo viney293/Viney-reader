@@ -1,7 +1,7 @@
 // Vineys Reader — service worker
 // Caches the app shell so it installs as an app and works offline.
 
-var CACHE_NAME = "vineys-reader-v4";
+var CACHE_NAME = "vineys-reader-v5";
 var ASSETS = [
   "./",
   "./index.html",

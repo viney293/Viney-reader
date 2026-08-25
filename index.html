@@ -216,7 +216,7 @@
 
   .page-content {
     font-family: 'Libre Caslon Text', serif;
-    font-size: 17px;
+    font-size: 15px;
     line-height: 1.6;
     text-align: left;
     height: 100%;
@@ -1312,8 +1312,21 @@
   setPageCount(2);
   rescale();
   updateZoomChrome();
-  paginate();
-  renderStatic();
+
+  // Wait for the actual book font to finish loading before measuring pages —
+  // pagination run against a fallback system font locks in wrong (usually
+  // larger) measurements, which understates how much text actually fits and
+  // leaves pages ending far short of full.
+  loadingNote.style.display = "block";
+  if (document.fonts && document.fonts.ready){
+    document.fonts.ready.then(function(){
+      paginate();
+      renderStatic();
+    });
+  } else {
+    paginate();
+    renderStatic();
+  }
 
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
     window.addEventListener("load", function(){
