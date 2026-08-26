@@ -230,6 +230,11 @@
     margin-bottom: 0.9em;
     color: var(--accent);
   }
+  .page-content p.subtitle-heading {
+    font-weight: 700;
+    margin-bottom: 0.85em;
+    color: var(--ink);
+  }
 
   .page-content.title-page {
     display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
@@ -847,16 +852,88 @@
     "The covenant is signed, not in ink, but in how we live from this page forward.",
     "This is our new beginning. Let it be written."
   ];
+  var BOOK_SUBTITLES = [
+    "The Struggle for Identity and Dignity",
+    "A Roadmap for Action",
+    "To the Youth, and to the Affluent",
+    "A Path Forward",
+    "Before I Go Further, Two Words I Need to Define",
+    "The Natural Evolution Theory of Coloured Identity",
+    "Where the Path Begins",
+    "The Origins They Don't Teach",
+    "The Khoisan Are Not Coloureds",
+    "The Truth Hidden in Our Blood",
+    "The Invisible Majority",
+    "The Psychological Assault",
+    "Addiction: The Designer Epidemic",
+    "The Turning Point",
+    "The Word They Gave Us",
+    "The Evolutionary Theory of Coloured Identity",
+    "Our Identity Is Our Weapon",
+    "Rebirth Through Ownership",
+    "Politics as Psychological Warfare",
+    "What We Passed Down",
+    "The Five Pillars of the Coloured Mandate",
+    "The Path Forward Is Not Easy",
+    "Language, Kaaps as Code",
+    "Music, Survival in Sound",
+    "Faith, Not Just Religion, but Resilience",
+    "Humor, Food, Ritual, Our Hidden Language",
+    "Why Culture Is the Battlefield",
+    "Our Children Are Not Confused, They're Awake",
+    "Where We Failed Them",
+    "Not a New Generation, A Next Generation",
+    "Why Identity Must Be Political",
+    "Leadership Is Not Clean, It's Courageous",
+    "Evolutionary Politics, A New Human Model",
+    "The Liberation Path, We Must Commit",
+    "Why We Are Considered Politically Naive",
+    "The Disaster of Our Current Identity",
+    "The Illusion of Progress",
+    "Naming the Condition",
+    "Mental Sovereignty",
+    "From Internalized Shame to Evolutionary Pride",
+    "The First Target of Any Colonizer Is Culture",
+    "Hijacked, Not Destroyed",
+    "Cultural Confusion: The Real Weapon",
+    "Culture Is a Weapon, Not an Add-On",
+    "What We Must Reclaim",
+    "From Cultural Shame to Cultural Strategy",
+    "Innovation, Not Nostalgia",
+    "The Silent Workers of Empire",
+    "Excluded by Design, Not Default",
+    "The Illusion of Inclusion",
+    "The Cost of Surviving Without Power",
+    "Black Capitalism, White Capitalism, and Coloured Nothingness",
+    "Reclaiming Economic Sovereignty: A Blueprint",
+    "The ANC's Bargain: Freedom for Black Votes, Silence for Coloureds",
+    "The DA's Deal: A Party of Two Sides",
+    "A Word From the Author: Why I See Race",
+    "A Letter to a Young Politician",
+    "Why It Worked",
+    "Our Own Silence",
+    "The Blueprint for Political Reclamation",
+    "The Final Line in the Sand",
+    "The Silent Cultural Genocide",
+    "Cultural Amnesia Is Designed to Keep You Powerless",
+    "Rebuilding Is Strategic, Not Cosmetic",
+    "From Pain to Pride",
+    "Culture Is the Soul of Liberation",
+    "Defined by Everyone but Ourselves",
+    "When Silence Becomes Betrayal",
+    "Protect Your Own, Fund Your Own, Defend Your Own",
+    "Let's Make It Plain",
+    "Why the Coloured Conscious Must Rise"
+  ];
   var HEADINGS_SET = {};
   BOOK_HEADINGS.forEach(function(h){ HEADINGS_SET[h] = true; });
+  var SUBTITLES_SET = {};
+  BOOK_SUBTITLES.forEach(function(s){ SUBTITLES_SET[s] = true; });
   function isHeading(text){ return !!HEADINGS_SET[text]; }
+  function isSubtitle(text){ return !!SUBTITLES_SET[text]; }
 
   function escapeHtml(s){
     return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  }
-  function paraHtml(text){
-    var cls = isHeading(text) ? ' class="chapter-heading"' : '';
-    return "<p" + cls + ">" + escapeHtml(text) + "</p>";
   }
 
   // ---------- State ----------
@@ -888,43 +965,138 @@
   var bookEl = $("bookEl");
   var leavesArea = $("leavesArea");
 
-  // ---------- Pagination (paragraph-greedy, headings force a new page) ----------
+  // ---------- Pagination ----------
+  // Pages are filled as close to completely full as possible. A regular
+  // paragraph is allowed to split across a page boundary (continuing on the
+  // next page), exactly like a real book. The two exceptions, as requested:
+  // a chapter heading always starts a brand-new page, and an in-chapter
+  // subtitle is only placed on a page if there's also room left for at least
+  // a few lines of body text under it — otherwise it's pushed to the next
+  // page instead, so a subtitle never ends up stranded at the very bottom.
+  var MIN_TRAILING_AFTER_SUBTITLE = 70; // px
+
+  function segmentHtml(seg){
+    var text = BOOK_BODY_PARAS[seg.idx];
+    var slice = seg.kind === "full" ? text : text.slice(seg.start, seg.end);
+    var cls = "";
+    if (seg.kind === "full"){
+      if (isHeading(text)) cls = ' class="chapter-heading"';
+      else if (isSubtitle(text)) cls = ' class="subtitle-heading"';
+    }
+    return "<p" + cls + ">" + escapeHtml(slice) + "</p>";
+  }
+
   function paginate(){
     loadingNote.style.display = "block";
     var maxHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--page-h')) - 86;
 
-    function fits(indices){
-      measurer.innerHTML = indices.map(function(idx){ return paraHtml(BOOK_BODY_PARAS[idx]); }).join("");
+    function heightOf(segments){
+      measurer.innerHTML = segments.map(segmentHtml).join("");
+      return measurer.scrollHeight;
+    }
+    function fits(segments){ return heightOf(segments) <= maxHeight; }
+
+    // Binary-search the max number of characters of `text` that fit in the
+    // remaining space after `prefixSegments`, then back off to the previous
+    // word boundary so we never split a word in half.
+    function findSplit(prefixSegments, text){
+      var lo = 0, hi = text.length;
+      while (lo < hi){
+        var mid = Math.ceil((lo + hi + 1) / 2);
+        var candidate = prefixSegments.concat([{ idx: -1, kind: "partial", start: 0, end: 0, _text: text.slice(0, mid) }]);
+        if (fitsRaw(candidate)) lo = mid; else hi = mid - 1;
+      }
+      if (lo > 0 && lo < text.length){
+        var lastSpace = text.lastIndexOf(" ", lo);
+        if (lastSpace > 0) lo = lastSpace;
+      }
+      return lo;
+    }
+    // Same as segmentHtml, but supports a throwaway probe segment carrying
+    // literal text directly (used only inside findSplit's binary search).
+    function fitsRaw(segments){
+      measurer.innerHTML = segments.map(function(seg){
+        if (seg.idx === -1) return "<p>" + escapeHtml(seg._text) + "</p>";
+        return segmentHtml(seg);
+      }).join("");
       return measurer.scrollHeight <= maxHeight;
     }
 
     var pages = [];
     pages.push({ type: "title" });
 
-    var i = 0;
+    var paraIdx = 0;
+    var charOffset = 0;
     var total = BOOK_BODY_PARAS.length;
-    var guard = 0;
+    var guardOuter = 0;
 
-    while (i < total && guard < 5000){
-      guard++;
-      var current = [i];
-      i++;
+    while (paraIdx < total && guardOuter < 20000){
+      guardOuter++;
+      var segs = [];
+      var pageHasContent = false;
+      var guardInner = 0;
 
-      // Safety: if even the first paragraph alone overflows, we still keep it
-      // (rare edge case for an unusually long paragraph) rather than looping forever.
+      while (paraIdx < total && guardInner < 20000){
+        guardInner++;
+        var text = BOOK_BODY_PARAS[paraIdx];
+        var heading = isHeading(text);
+        var subtitle = isSubtitle(text);
 
-      while (i < total){
-        if (isHeading(BOOK_BODY_PARAS[i])) break; // headings always start a fresh page
-        var candidate = current.concat([i]);
-        if (fits(candidate)){
-          current = candidate;
-          i++;
+        if (charOffset === 0 && (heading || subtitle) && pageHasContent){
+          if (heading) break;
+          var withSub = segs.concat([{ idx: paraIdx, kind: "full" }]);
+          if (!fits(withSub)) break;
+          if (maxHeight - heightOf(withSub) < MIN_TRAILING_AFTER_SUBTITLE) break;
+          // otherwise fall through and place the subtitle below
+        }
+
+        if (charOffset === 0){
+          var candidate = segs.concat([{ idx: paraIdx, kind: "full" }]);
+          if (fits(candidate)){
+            segs = candidate;
+            pageHasContent = true;
+            paraIdx++;
+            continue;
+          }
+          if (heading || subtitle){
+            // A heading/subtitle is short — if it doesn't fit at all, this
+            // must be an almost-full page; just close it here and let the
+            // heading/subtitle start the next page in full.
+            if (!pageHasContent){ segs.push({ idx: paraIdx, kind: "full" }); paraIdx++; }
+            break;
+          }
+          var n = findSplit(segs, text);
+          if (n > 0){
+            segs.push({ idx: paraIdx, kind: "partial", start: 0, end: n });
+            charOffset = n;
+            pageHasContent = true;
+          } else if (!pageHasContent){
+            segs.push({ idx: paraIdx, kind: "partial", start: 0, end: 1 });
+            charOffset = 1;
+            pageHasContent = true;
+          }
+          break;
         } else {
+          var remainingText = text.slice(charOffset);
+          var candidateFull = segs.concat([{ idx: paraIdx, kind: "partial", start: charOffset, end: text.length }]);
+          if (fits(candidateFull)){
+            segs = candidateFull;
+            pageHasContent = true;
+            charOffset = 0;
+            paraIdx++;
+            continue;
+          }
+          var n2 = findSplit(segs, remainingText);
+          if (n2 > 0){
+            segs.push({ idx: paraIdx, kind: "partial", start: charOffset, end: charOffset + n2 });
+            charOffset += n2;
+            pageHasContent = true;
+          }
           break;
         }
       }
 
-      pages.push({ type: "content", paraIndices: current });
+      pages.push({ type: "content", segments: segs });
     }
 
     pages.push({ type: "end" });
@@ -951,7 +1123,7 @@
     if (pageObj.type === "end"){
       return { content: '<div class="end-page">The End</div>', folio: "" };
     }
-    var html = pageObj.paraIndices.map(function(idx){ return paraHtml(BOOK_BODY_PARAS[idx]); }).join("");
+    var html = pageObj.segments.map(segmentHtml).join("");
     return { content: html, folio: String(state.pages.indexOf(pageObj)) };
   }
 
@@ -1239,6 +1411,7 @@
     BOOK_BODY_PARAS.length = 0;
     Array.prototype.push.apply(BOOK_BODY_PARAS, customParas);
     Object.keys(HEADINGS_SET).forEach(function(k){ delete HEADINGS_SET[k]; });
+    Object.keys(SUBTITLES_SET).forEach(function(k){ delete SUBTITLES_SET[k]; });
     state.current = 0;
     modalBackdrop.classList.remove("open");
     paginate();
