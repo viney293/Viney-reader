@@ -1502,19 +1502,38 @@
   rescale();
   updateZoomChrome();
 
-  // Wait for the actual book font to finish loading before measuring pages —
-  // pagination run against a fallback system font locks in wrong (usually
-  // larger) measurements, which understates how much text actually fits and
-  // leaves pages ending far short of full.
+  // Wait for the actual book fonts to finish loading (and for the browser to
+  // have actually painted with them, not just resolved the load promise)
+  // before measuring pages. Pagination run too early, or against a font that
+  // hasn't visually taken effect yet, locks in wrong measurements — this is
+  // a known source of unreliable pagination, especially in mobile WebViews.
   loadingNote.style.display = "block";
-  if (document.fonts && document.fonts.ready){
-    document.fonts.ready.then(function(){
+
+  function runPaginationWhenReady(){
+    function afterTwoFrames(cb){
+      requestAnimationFrame(function(){ requestAnimationFrame(cb); });
+    }
+    afterTwoFrames(function(){
       paginate();
       renderStatic();
     });
+  }
+
+  if (document.fonts && document.fonts.load){
+    Promise.all([
+      document.fonts.load('400 15px "Libre Caslon Text"'),
+      document.fonts.load('700 15px "Libre Caslon Text"'),
+      document.fonts.load('italic 400 15px "Libre Caslon Text"')
+    ]).catch(function(){ /* fall through even if a variant fails to load */ })
+      .then(function(){
+        if (document.fonts.ready){
+          document.fonts.ready.then(runPaginationWhenReady);
+        } else {
+          runPaginationWhenReady();
+        }
+      });
   } else {
-    paginate();
-    renderStatic();
+    runPaginationWhenReady();
   }
 
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
