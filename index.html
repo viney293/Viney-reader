@@ -222,7 +222,7 @@
     height: 100%;
     overflow: hidden;
   }
-  .page-content p { margin: 0; text-indent: 1.4em; }
+  .page-content p { margin: 0 0 0.55em 0; text-indent: 1.4em; }
   .page-content p.no-indent { text-indent: 0; }
   .page-content p.chapter-heading {
     font-weight: 700;
@@ -357,6 +357,10 @@
   .file-btn { font-family:'Inter', sans-serif; font-size:12px; color:var(--accent); text-decoration:underline; cursor:pointer; }
 .load-status { font-family:'Inter', sans-serif; font-size:11.5px; color:#a9906a; min-height:14px; }
 .load-status.error { color:#b5432f; }
+.modal select { width:100%; background:#efe6cf; border:1px solid #c9a877; color:#2b2113; padding:9px 10px; border-radius:3px; font-family:'Inter', sans-serif; font-size:14px; }
+.modal .range-row { display:flex; align-items:center; gap:10px; }
+.modal input[type="range"] { flex:1; accent-color: var(--accent); }
+.modal .range-value { font-family:'Inter', sans-serif; font-size:12px; color:var(--accent); min-width:34px; text-align:right; }
 
   @media (prefers-reduced-motion: reduce) {
     .flip-leaf.animating { transition: none !important; }
@@ -400,6 +404,7 @@
           <button id="zoomPlus" aria-label="Zoom in">+</button>
         </div>
         <button class="chrome-btn" id="narrateBtn">&#128266; Read aloud</button>
+        <button class="chrome-btn" id="voiceSettingsBtn" title="Choose voice, pitch and speed">&#9881; Voice</button>
         <button class="chrome-btn" id="openLoad">Load a book</button>
       </div>
     </div>
@@ -477,6 +482,29 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="voiceModalBackdrop">
+    <div class="modal">
+      <h2>Read-aloud voice</h2>
+      <label for="voiceSelect">Voice</label>
+      <select id="voiceSelect"></select>
+      <label for="pitchRange">Pitch</label>
+      <div class="range-row">
+        <input type="range" id="pitchRange" min="0.7" max="1.3" step="0.05" value="1">
+        <span class="range-value" id="pitchValue">1.00</span>
+      </div>
+      <label for="rateRange">Speed</label>
+      <div class="range-row">
+        <input type="range" id="rateRange" min="0.7" max="1.2" step="0.05" value="0.95">
+        <span class="range-value" id="rateValue">0.95</span>
+      </div>
+      <div class="load-status" id="voiceStatus" aria-live="polite"></div>
+      <div class="actions">
+        <button class="chrome-btn" id="cancelVoice">Cancel</button>
+        <button class="chrome-btn primary" id="saveVoice">Save</button>
+      </div>
+    </div>
+  </div>
+
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.0/mammoth.browser.min.js"></script>
 <script>
 (function(){
@@ -487,6 +515,9 @@
   var ACCESS_CHECK_URL = WORKER_URL + "/verify";
   var BUY_PAGE_URL = "buy.html";
   var STORAGE_KEY = "vineys_access_key";
+  var VOICE_PREF_KEY = "vineys_voice_uri";
+  var PITCH_PREF_KEY = "vineys_voice_pitch";
+  var RATE_PREF_KEY = "vineys_voice_rate";
   var DEV_MODE = WORKER_URL.indexOf("YOUR-WORKER-SUBDOMAIN") !== -1;
 
   // ---------- Book content ----------
@@ -1179,6 +1210,12 @@
     if (!window.speechSynthesis) return null;
     var voices = window.speechSynthesis.getVoices() || [];
     if (!voices.length) return null;
+    var savedURI = null;
+    try { savedURI = localStorage.getItem(VOICE_PREF_KEY); } catch(e){}
+    if (savedURI){
+      var chosen = voices.filter(function(v){ return v.voiceURI === savedURI; })[0];
+      if (chosen) return chosen;
+    }
     var maleNames = ["male", "david", "daniel", "george", "james", "mark", "fred", "arthur", "oliver", "guy", "ryan", "thabo", "sipho", "will"];
     function score(v){
       var name = (v.name || "").toLowerCase();
@@ -1211,8 +1248,13 @@
     var text = getPlainTextForPage(getActiveReadingPageObj());
     if (!text){ stopNarration(); return; }
     var utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.95;
-    utt.pitch = 0.85; // nudges a default voice toward a deeper, more male-leaning tone
+    var savedPitch = null, savedRate = null;
+    try {
+      savedPitch = parseFloat(localStorage.getItem(PITCH_PREF_KEY));
+      savedRate = parseFloat(localStorage.getItem(RATE_PREF_KEY));
+    } catch(e){}
+    utt.rate = (isFinite(savedRate) && savedRate) ? savedRate : 0.95; // calm, unhurried pace
+    utt.pitch = (isFinite(savedPitch) && savedPitch) ? savedPitch : 1.0; // normal pitch by default; adjustable in Voice settings
     utt.lang = "en-ZA"; // hint only — falls back gracefully if unavailable
     var voice = pickNarrationVoice();
     if (voice) utt.voice = voice;
@@ -1239,6 +1281,73 @@
     }
   }
   narrateBtn.addEventListener("click", toggleNarration);
+
+  // ---------- Voice settings modal ----------
+  var voiceSettingsBtn = $("voiceSettingsBtn");
+  var voiceModalBackdrop = $("voiceModalBackdrop");
+  var voiceSelect = $("voiceSelect");
+  var pitchRange = $("pitchRange"), pitchValue = $("pitchValue");
+  var rateRange = $("rateRange"), rateValue = $("rateValue");
+  var voiceStatus = $("voiceStatus");
+
+  function populateVoiceSelect(){
+    if (!window.speechSynthesis) return;
+    var voices = window.speechSynthesis.getVoices() || [];
+    var savedURI = null;
+    try { savedURI = localStorage.getItem(VOICE_PREF_KEY); } catch(e){}
+    voiceSelect.innerHTML = "";
+    var autoOpt = document.createElement("option");
+    autoOpt.value = "";
+    autoOpt.textContent = "Auto (best available male / South African voice)";
+    voiceSelect.appendChild(autoOpt);
+    voices.forEach(function(v){
+      var opt = document.createElement("option");
+      opt.value = v.voiceURI;
+      opt.textContent = v.name + " (" + v.lang + ")";
+      voiceSelect.appendChild(opt);
+    });
+    voiceSelect.value = savedURI || "";
+    voiceStatus.textContent = voices.length ? "" :
+      "No voices available yet \u2014 your browser may still be loading them. Give it a moment and reopen this.";
+  }
+
+  if (voiceSettingsBtn){
+    voiceSettingsBtn.addEventListener("click", function(){
+      if (narration.active) stopNarration();
+      var savedPitch = null, savedRate = null;
+      try {
+        savedPitch = parseFloat(localStorage.getItem(PITCH_PREF_KEY));
+        savedRate = parseFloat(localStorage.getItem(RATE_PREF_KEY));
+      } catch(e){}
+      pitchRange.value = (isFinite(savedPitch) && savedPitch) ? savedPitch : 1.0;
+      rateRange.value = (isFinite(savedRate) && savedRate) ? savedRate : 0.95;
+      pitchValue.textContent = parseFloat(pitchRange.value).toFixed(2);
+      rateValue.textContent = parseFloat(rateRange.value).toFixed(2);
+      populateVoiceSelect();
+      voiceModalBackdrop.classList.add("open");
+    });
+    if (window.speechSynthesis){
+      // Voice lists load asynchronously on first page load in some browsers.
+      window.speechSynthesis.addEventListener("voiceschanged", function(){
+        if (voiceModalBackdrop.classList.contains("open")) populateVoiceSelect();
+      });
+    }
+    pitchRange.addEventListener("input", function(){ pitchValue.textContent = parseFloat(pitchRange.value).toFixed(2); });
+    rateRange.addEventListener("input", function(){ rateValue.textContent = parseFloat(rateRange.value).toFixed(2); });
+    $("cancelVoice").addEventListener("click", function(){ voiceModalBackdrop.classList.remove("open"); });
+    $("saveVoice").addEventListener("click", function(){
+      try {
+        if (voiceSelect.value) localStorage.setItem(VOICE_PREF_KEY, voiceSelect.value);
+        else localStorage.removeItem(VOICE_PREF_KEY);
+        localStorage.setItem(PITCH_PREF_KEY, pitchRange.value);
+        localStorage.setItem(RATE_PREF_KEY, rateRange.value);
+      } catch(e){}
+      voiceModalBackdrop.classList.remove("open");
+    });
+    voiceModalBackdrop.addEventListener("click", function(e){
+      if (e.target === voiceModalBackdrop) voiceModalBackdrop.classList.remove("open");
+    });
+  }
 
   // ---------- Render (static, no animation) ----------
   function renderStatic(){
@@ -1471,13 +1580,23 @@
 
   // ---------- Load-a-book modal ----------
   var modalBackdrop = $("modalBackdrop");
+  // Populated right after a successful .docx upload with each paragraph's
+  // original Word style (heading / subtitle / body), in the same order as
+  // the paragraphs dropped into the textarea. Used at "Open book" time to
+  // carry chapter headings over instead of flattening the whole book into
+  // plain body paragraphs. Cleared whenever the user edits the textarea by
+  // hand, loads a plain .txt file, or reopens the modal, so it never gets
+  // applied against text it no longer matches.
+  var pendingDocxStructure = null;
   $("openLoad").addEventListener("click", function(){
     if (narration.active) stopNarration();
     $("titleInput").value = state.title;
     $("authorInput").value = state.author;
     setLoadStatus("", false);
+    pendingDocxStructure = null;
     modalBackdrop.classList.add("open");
   });
+  $("textInput").addEventListener("input", function(){ pendingDocxStructure = null; });
   $("cancelLoad").addEventListener("click", function(){ modalBackdrop.classList.remove("open"); });
   var loadStatus = $("loadStatus");
   function setLoadStatus(msg, isError){
@@ -1497,28 +1616,42 @@
         setLoadStatus("Could not load the .docx reader (are you offline?). Try again, or paste the text instead.", true);
         return;
       }
+      pendingDocxStructure = null;
       var reader = new FileReader();
       reader.onerror = function(){ setLoadStatus("Couldn't read that file. Try again, or paste the text instead.", true); };
       reader.onload = function(ev){
         // Convert to HTML rather than mammoth's plain "raw text" mode: this
-        // gives us one <p> (or heading) per real Word paragraph, so we can
-        // rebuild clean blank-line-separated paragraphs ourselves instead of
-        // trusting how mammoth joins raw text internally.
+        // gives us one <p>/<hN> per real Word paragraph, so we can rebuild
+        // clean blank-line-separated paragraphs ourselves (instead of
+        // trusting how mammoth joins raw text internally) AND remember which
+        // paragraphs were styled as Word headings, so chapters can still
+        // start on a fresh page with heading styling instead of collapsing
+        // into one long stream of identical body paragraphs.
         window.mammoth.convertToHtml({ arrayBuffer: ev.target.result })
           .then(function(result){
             var doc = new DOMParser().parseFromString(result.value, "text/html");
             var blocks = doc.body.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li");
             var paras = [];
+            var structure = [];
             blocks.forEach(function(el){
               var t = el.textContent.replace(/\s+/g, " ").trim();
-              if (t) paras.push(t);
+              if (!t) return;
+              paras.push(t);
+              var tag = el.tagName.toLowerCase();
+              var kind = "body";
+              if (tag === "h1" || tag === "h2") kind = "heading";
+              else if (tag === "h3" || tag === "h4" || tag === "h5" || tag === "h6") kind = "subtitle";
+              structure.push({ text: t, kind: kind });
             });
             if (!paras.length){
               setLoadStatus("That .docx file looks empty once the formatting is stripped out.", true);
               return;
             }
+            pendingDocxStructure = structure;
             $("textInput").value = paras.join("\n\n");
-            setLoadStatus(name + " loaded (" + paras.length + " paragraphs). Review the text below, then tap Open book.", false);
+            var headingCount = structure.filter(function(s){ return s.kind !== "body"; }).length;
+            var structureNote = headingCount ? (" " + headingCount + " heading" + (headingCount === 1 ? "" : "s") + " detected and will carry over as chapter breaks.") : "";
+            setLoadStatus(name + " loaded (" + paras.length + " paragraphs)." + structureNote + " Review the text below, then tap Open book.", false);
           })
           .catch(function(){
             setLoadStatus("Couldn't read that .docx file. It may be corrupted, password-protected, or a .doc (old format) file — try re-saving it as .docx, or paste the text instead.", true);
@@ -1526,6 +1659,7 @@
       };
       reader.readAsArrayBuffer(file);
     } else {
+      pendingDocxStructure = null;
       var txtReader = new FileReader();
       txtReader.onerror = function(){ setLoadStatus("Couldn't read that file. Try again, or paste the text instead.", true); };
       txtReader.onload = function(ev){
@@ -1548,6 +1682,17 @@
     Array.prototype.push.apply(BOOK_BODY_PARAS, customParas);
     Object.keys(HEADINGS_SET).forEach(function(k){ delete HEADINGS_SET[k]; });
     Object.keys(SUBTITLES_SET).forEach(function(k){ delete SUBTITLES_SET[k]; });
+    // If this text still exactly matches what came straight from a .docx
+    // upload (i.e. the user didn't edit it afterwards), carry its Word
+    // heading structure over so chapters still start on a new page and
+    // read with heading styling, instead of every paragraph looking the same.
+    if (pendingDocxStructure && pendingDocxStructure.length === customParas.length &&
+        pendingDocxStructure.every(function(s, i){ return s.text === customParas[i]; })){
+      pendingDocxStructure.forEach(function(s){
+        if (s.kind === "heading") HEADINGS_SET[s.text] = true;
+        else if (s.kind === "subtitle") SUBTITLES_SET[s.text] = true;
+      });
+    }
     state.current = 0;
     modalBackdrop.classList.remove("open");
     paginate();
@@ -1618,7 +1763,7 @@
 
   // ---------- Init ----------
   $("brandTitle").textContent = state.title;
-  if (!window.speechSynthesis){ narrateBtn.style.display = "none"; }
+  if (!window.speechSynthesis){ narrateBtn.style.display = "none"; if (voiceSettingsBtn) voiceSettingsBtn.style.display = "none"; }
   setPageCount(2);
   rescale();
   updateZoomChrome();
