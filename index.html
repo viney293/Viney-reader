@@ -1311,6 +1311,7 @@
       "No voices available yet \u2014 your browser may still be loading them. Give it a moment and reopen this.";
   }
 
+  try {
   if (voiceSettingsBtn){
     voiceSettingsBtn.addEventListener("click", function(){
       if (narration.active) stopNarration();
@@ -1328,9 +1329,16 @@
     });
     if (window.speechSynthesis){
       // Voice lists load asynchronously on first page load in some browsers.
-      window.speechSynthesis.addEventListener("voiceschanged", function(){
+      // Using the classic onX property (not addEventListener) here on purpose:
+      // some mobile/WebView browsers don't fully implement EventTarget on the
+      // speechSynthesis object, and calling addEventListener on it there throws
+      // — which, unguarded, would stop this whole script partway through and
+      // break pagination/rendering for the rest of the page, not just this
+      // feature. The try/catch around this whole block is a second safety net
+      // for the same reason.
+      window.speechSynthesis.onvoiceschanged = function(){
         if (voiceModalBackdrop.classList.contains("open")) populateVoiceSelect();
-      });
+      };
     }
     pitchRange.addEventListener("input", function(){ pitchValue.textContent = parseFloat(pitchRange.value).toFixed(2); });
     rateRange.addEventListener("input", function(){ rateValue.textContent = parseFloat(rateRange.value).toFixed(2); });
@@ -1348,6 +1356,7 @@
       if (e.target === voiceModalBackdrop) voiceModalBackdrop.classList.remove("open");
     });
   }
+  } catch(e){}
 
   // ---------- Render (static, no animation) ----------
   function renderStatic(){
