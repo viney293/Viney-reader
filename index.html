@@ -355,6 +355,8 @@
   .modal .actions .chrome-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
   .modal .actions .chrome-btn.primary:hover { background:var(--accent-light); }
   .file-btn { font-family:'Inter', sans-serif; font-size:12px; color:var(--accent); text-decoration:underline; cursor:pointer; }
+.load-status { font-family:'Inter', sans-serif; font-size:11.5px; color:#a9906a; min-height:14px; }
+.load-status.error { color:#b5432f; }
 
   @media (prefers-reduced-motion: reduce) {
     .flip-leaf.animating { transition: none !important; }
@@ -463,9 +465,10 @@
       <input type="text" id="authorInput" placeholder="e.g. Frances Hodgson Burnett">
       <label for="textInput">Paste the text, or</label>
       <div class="row">
-        <span class="file-btn" id="fileTrigger">upload a .txt file</span>
-        <input type="file" id="fileInput" accept=".txt" style="display:none;">
+        <span class="file-btn" id="fileTrigger">upload a .txt or .docx file</span>
+        <input type="file" id="fileInput" accept=".txt,.docx" style="display:none;">
       </div>
+      <div class="load-status" id="loadStatus" aria-live="polite"></div>
       <textarea id="textInput" placeholder="Paste the full text of the book here. Separate paragraphs with a blank line."></textarea>
       <div class="actions">
         <button class="chrome-btn" id="cancelLoad">Cancel</button>
@@ -474,6 +477,7 @@
     </div>
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.0/mammoth.browser.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -1164,6 +1168,39 @@
     updateNarrationButton();
   }
 
+  // Web Speech API doesn't expose accent or gender directly — only whatever
+  // voices the device/browser happens to have installed, each with a name
+  // and a language tag. Until real voice cloning is wired up, this picks
+  // the closest available match: prefer a South African English/Afrikaans
+  // voice, and within that (or as a fallback across any English voice),
+  // prefer one whose name suggests a male voice, using the common names
+  // each platform (Chrome/Android, Edge/Windows, Safari/macOS) ships.
+  function pickNarrationVoice(){
+    if (!window.speechSynthesis) return null;
+    var voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+    var maleNames = ["male", "david", "daniel", "george", "james", "mark", "fred", "arthur", "oliver", "guy", "ryan", "thabo", "sipho", "will"];
+    function score(v){
+      var name = (v.name || "").toLowerCase();
+      var lang = (v.lang || "").toLowerCase();
+      var s = 0;
+      if (lang === "en-za") s += 100;
+      else if (lang === "af-za" || lang === "af") s += 90;
+      else if (lang.indexOf("za") !== -1) s += 60;
+      else if (lang.indexOf("en") === 0) s += 10;
+      for (var i=0;i<maleNames.length;i++){
+        if (name.indexOf(maleNames[i]) !== -1){ s += 20; break; }
+      }
+      return s;
+    }
+    var best = null, bestScore = -1;
+    voices.forEach(function(v){
+      var s = score(v);
+      if (s > bestScore){ bestScore = s; best = v; }
+    });
+    return best;
+  }
+
   function speakCurrentPage(){
     if (!window.speechSynthesis){
       narration.active = false;
@@ -1175,7 +1212,10 @@
     if (!text){ stopNarration(); return; }
     var utt = new SpeechSynthesisUtterance(text);
     utt.rate = 0.95;
+    utt.pitch = 0.85; // nudges a default voice toward a deeper, more male-leaning tone
     utt.lang = "en-ZA"; // hint only — falls back gracefully if unavailable
+    var voice = pickNarrationVoice();
+    if (voice) utt.voice = voice;
     utt.onend = function(){
       if (!narration.active) return;
       var t = computeTarget(state.current, 1, state.pageCount, state.pages.length);
@@ -1435,16 +1475,65 @@
     if (narration.active) stopNarration();
     $("titleInput").value = state.title;
     $("authorInput").value = state.author;
+    setLoadStatus("", false);
     modalBackdrop.classList.add("open");
   });
   $("cancelLoad").addEventListener("click", function(){ modalBackdrop.classList.remove("open"); });
+  var loadStatus = $("loadStatus");
+  function setLoadStatus(msg, isError){
+    loadStatus.textContent = msg || "";
+    loadStatus.classList.toggle("error", !!isError);
+  }
   $("fileTrigger").addEventListener("click", function(){ $("fileInput").click(); });
   $("fileInput").addEventListener("change", function(e){
     var file = e.target.files[0];
     if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(ev){ $("textInput").value = ev.target.result; };
-    reader.readAsText(file);
+    var name = file.name || "";
+    var isDocx = /\.docx$/i.test(name);
+    setLoadStatus("Reading " + name + "\u2026", false);
+
+    if (isDocx){
+      if (!window.mammoth){
+        setLoadStatus("Could not load the .docx reader (are you offline?). Try again, or paste the text instead.", true);
+        return;
+      }
+      var reader = new FileReader();
+      reader.onerror = function(){ setLoadStatus("Couldn't read that file. Try again, or paste the text instead.", true); };
+      reader.onload = function(ev){
+        // Convert to HTML rather than mammoth's plain "raw text" mode: this
+        // gives us one <p> (or heading) per real Word paragraph, so we can
+        // rebuild clean blank-line-separated paragraphs ourselves instead of
+        // trusting how mammoth joins raw text internally.
+        window.mammoth.convertToHtml({ arrayBuffer: ev.target.result })
+          .then(function(result){
+            var doc = new DOMParser().parseFromString(result.value, "text/html");
+            var blocks = doc.body.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li");
+            var paras = [];
+            blocks.forEach(function(el){
+              var t = el.textContent.replace(/\s+/g, " ").trim();
+              if (t) paras.push(t);
+            });
+            if (!paras.length){
+              setLoadStatus("That .docx file looks empty once the formatting is stripped out.", true);
+              return;
+            }
+            $("textInput").value = paras.join("\n\n");
+            setLoadStatus(name + " loaded (" + paras.length + " paragraphs). Review the text below, then tap Open book.", false);
+          })
+          .catch(function(){
+            setLoadStatus("Couldn't read that .docx file. It may be corrupted, password-protected, or a .doc (old format) file — try re-saving it as .docx, or paste the text instead.", true);
+          });
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      var txtReader = new FileReader();
+      txtReader.onerror = function(){ setLoadStatus("Couldn't read that file. Try again, or paste the text instead.", true); };
+      txtReader.onload = function(ev){
+        $("textInput").value = ev.target.result;
+        setLoadStatus(name + " loaded. Review the text below, then tap Open book.", false);
+      };
+      txtReader.readAsText(file);
+    }
   });
   $("confirmLoad").addEventListener("click", function(){
     var text = $("textInput").value.trim();
