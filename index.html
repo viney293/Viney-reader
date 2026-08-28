@@ -970,13 +970,21 @@
   var leavesArea = $("leavesArea");
 
   // ---------- Pagination ----------
-  // Pages are filled as close to completely full as possible. A regular
-  // paragraph is allowed to split across a page boundary (continuing on the
-  // next page), exactly like a real book. The two exceptions, as requested:
-  // a chapter heading always starts a brand-new page, and an in-chapter
-  // subtitle is only placed on a page if there's also room left for at least
-  // a few lines of body text under it — otherwise it's pushed to the next
-  // page instead, so a subtitle never ends up stranded at the very bottom.
+  // Pages are filled with as many *complete* paragraphs as fit. A paragraph
+  // is never split across a page boundary — it either fits on the current
+  // page in full, or it starts the next page instead. That means a page can
+  // occasionally end a little short of the bottom margin, but every
+  // paragraph always reads as one continuous block, with its indent and
+  // alignment applied consistently — no mid-sentence breaks, no partial
+  // fragments. (An earlier version of this code split paragraphs across
+  // pages to fill them more fully; that's what caused the broken gaps and
+  // mixed-up indenting, so it's been removed in favor of this simpler,
+  // reliable approach.)
+  // The two heading rules are unchanged: a chapter heading always starts a
+  // brand-new page, and an in-chapter subtitle is only placed on a page if
+  // there's also room left for at least a few lines of body text under it —
+  // otherwise it's pushed to the next page instead, so a subtitle never ends
+  // up stranded at the very bottom.
   var MIN_TRAILING_AFTER_SUBTITLE = 70; // px
 
   function segmentHtml(seg){
@@ -1013,37 +1021,10 @@
     }
     function fits(segments){ return heightOf(segments) <= maxHeight; }
 
-    // Binary-search the max number of characters of `text` that fit in the
-    // remaining space after `prefixSegments`, then back off to the previous
-    // word boundary so we never split a word in half.
-    function findSplit(prefixSegments, text){
-      var lo = 0, hi = text.length;
-      while (lo < hi){
-        var mid = Math.ceil((lo + hi + 1) / 2);
-        var candidate = prefixSegments.concat([{ idx: -1, kind: "partial", start: 0, end: 0, _text: text.slice(0, mid) }]);
-        if (fitsRaw(candidate)) lo = mid; else hi = mid - 1;
-      }
-      if (lo > 0 && lo < text.length){
-        var lastSpace = text.lastIndexOf(" ", lo);
-        if (lastSpace > 0) lo = lastSpace;
-      }
-      return lo;
-    }
-    // Same as segmentHtml, but supports a throwaway probe segment carrying
-    // literal text directly (used only inside findSplit's binary search).
-    function fitsRaw(segments){
-      measurer.innerHTML = segments.map(function(seg){
-        if (seg.idx === -1) return "<p>" + escapeHtml(seg._text) + "</p>";
-        return segmentHtml(seg);
-      }).join("");
-      return measurer.scrollHeight <= maxHeight;
-    }
-
     var pages = [];
     pages.push({ type: "title" });
 
     var paraIdx = 0;
-    var charOffset = 0;
     var total = BOOK_BODY_PARAS.length;
     var guardOuter = 0;
 
@@ -1059,7 +1040,7 @@
         var heading = isHeading(text);
         var subtitle = isSubtitle(text);
 
-        if (charOffset === 0 && (heading || subtitle) && pageHasContent){
+        if ((heading || subtitle) && pageHasContent){
           if (heading) break;
           var withSub = segs.concat([{ idx: paraIdx, kind: "full" }]);
           if (!fits(withSub)) break;
@@ -1067,50 +1048,24 @@
           // otherwise fall through and place the subtitle below
         }
 
-        if (charOffset === 0){
-          var candidate = segs.concat([{ idx: paraIdx, kind: "full" }]);
-          if (fits(candidate)){
-            segs = candidate;
-            pageHasContent = true;
-            paraIdx++;
-            continue;
-          }
-          if (heading || subtitle){
-            // A heading/subtitle is short — if it doesn't fit at all, this
-            // must be an almost-full page; just close it here and let the
-            // heading/subtitle start the next page in full.
-            if (!pageHasContent){ segs.push({ idx: paraIdx, kind: "full" }); paraIdx++; }
-            break;
-          }
-          var n = findSplit(segs, text);
-          if (n > 0){
-            segs.push({ idx: paraIdx, kind: "partial", start: 0, end: n });
-            charOffset = n;
-            pageHasContent = true;
-          } else if (!pageHasContent){
-            segs.push({ idx: paraIdx, kind: "partial", start: 0, end: 1 });
-            charOffset = 1;
-            pageHasContent = true;
-          }
-          break;
-        } else {
-          var remainingText = text.slice(charOffset);
-          var candidateFull = segs.concat([{ idx: paraIdx, kind: "partial", start: charOffset, end: text.length }]);
-          if (fits(candidateFull)){
-            segs = candidateFull;
-            pageHasContent = true;
-            charOffset = 0;
-            paraIdx++;
-            continue;
-          }
-          var n2 = findSplit(segs, remainingText);
-          if (n2 > 0){
-            segs.push({ idx: paraIdx, kind: "partial", start: charOffset, end: charOffset + n2 });
-            charOffset += n2;
-            pageHasContent = true;
-          }
-          break;
+        var candidate = segs.concat([{ idx: paraIdx, kind: "full" }]);
+        if (fits(candidate)){
+          segs = candidate;
+          pageHasContent = true;
+          paraIdx++;
+          continue;
         }
+
+        if (!pageHasContent){
+          // A single paragraph taller than a whole page on its own (rare —
+          // e.g. one very long unbroken block of text). Rather than split it
+          // or loop forever, give it the page to itself; the very bottom may
+          // get visually clipped, which is a far better failure mode than
+          // broken pagination affecting every page.
+          segs.push({ idx: paraIdx, kind: "full" });
+          paraIdx++;
+        }
+        break;
       }
 
       pages.push({ type: "content", segments: segs });
