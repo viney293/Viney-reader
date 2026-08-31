@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vineys Reader</title>
+<meta name="description" content="Vineys Reader — a page-turning book reader.">
+<meta name="theme-color" content="#4a7fb5">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Vineys Reader">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --stage-bg-1: #f8f1e3;
+    --stage-bg-2: #e9dcc3;
+    --case-blue: #8a6444;
+    --case-blue-dark: #5c4128;
+    --accent: #6b4423;
+    --accent-light: #a97a44;
+    --paper: #faf3e2;
+    --ink: #3b2a17;
+    --ribbon: #8a4a3a;
+    --page-w: 440px;
+    --page-h: 620px;
+    --page-count: 2;
+    --scale: 1;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 30%, var(--stage-bg-1), var(--stage-bg-2) 70%);
+    font-family: 'Inter', sans-serif;
+  }
+
+  .stage {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .stage.zoomed {
+    overflow: auto;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 60px;
+  }
+
+  /* ---------- Top chrome ---------- */
+  .topbar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    row-gap: 10px;
+    padding: 16px 20px;
+    z-index: 50;
+  }
+  .brand {
+    font-family: 'Libre Caslon Text', serif;
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 18px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .brand span.book-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 12px;
+    color: #a9906a;
+    letter-spacing: 0.03em;
+  }
+  .topbar-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chrome-btn {
+    background: #faf3e2;
+    border: 1px solid #c9a877;
+    color: var(--accent);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .chrome-btn:hover { background: #ecdfc0; }
+  .chrome-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chrome-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .btn-group {
+    display: flex;
+    border: 1px solid #c9a877;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .btn-group button {
+    background: #faf3e2;
+    border: none;
+    color: var(--accent);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-right: 1px solid #c9a877;
+  }
+  .btn-group button:last-child { border-right: none; }
+  .btn-group button:hover { background: #ecdfc0; }
+  .btn-group button.active { background: var(--accent); color: #fff; }
+  .btn-group button:disabled { opacity: 0.4; cursor: default; }
+
+  /* ---------- The book ---------- */
+  .book-wrap { transform: scale(var(--scale)); transition: transform 0.15s ease; }
+
+  .book {
+    position: relative;
+    width: calc(var(--page-w) * var(--page-count) + 56px);
+    height: calc(var(--page-h) + 48px);
+    padding: 24px 28px;
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 3px),
+      linear-gradient(160deg, var(--case-blue), var(--case-blue-dark));
+    border-radius: 12px;
+    box-shadow: 0 30px 70px rgba(60,35,15,0.35), 0 8px 20px rgba(60,35,15,0.25), inset 0 0 0 2px rgba(212,182,132,0.28), inset 0 0 24px rgba(0,0,0,0.18);
+    transition: width 0.25s ease;
+  }
+  .book::before, .book::after {
+    content: "";
+    position: absolute;
+    top: 32px;
+    bottom: 32px;
+    width: 6px;
+    background: repeating-linear-gradient(to bottom, #efe2bf 0px, #efe2bf 2px, #d6c294 2px, #d6c294 3px);
+    box-shadow: inset 0 0 4px rgba(60,35,15,0.35);
+    z-index: 5;
+    pointer-events: none;
+  }
+  .book::before { left: 9px; border-radius: 3px 0 0 3px; }
+  .book::after { right: 9px; border-radius: 0 3px 3px 0; }
+
+  .spine {
+    position: absolute;
+    left: 50%;
+    top: 24px;
+    bottom: 24px;
+    width: 22px;
+    transform: translateX(-50%);
+    background:
+      repeating-linear-gradient(to bottom, transparent 0px, transparent 37px, rgba(214,183,133,0.4) 37px, rgba(214,183,133,0.4) 40px, transparent 40px, transparent 78px),
+      linear-gradient(90deg, rgba(0,0,0,0.28), rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.28));
+    z-index: 30;
+    pointer-events: none;
+  }
+  .single-page-mode .spine { display: none; }
+
+  .ribbon {
+    position: absolute;
+    top: -6px;
+    right: 46px;
+    width: 13px;
+    height: 42px;
+    background: var(--ribbon);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+    z-index: 40;
+    transition: right 0.5s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+  }
+
+  .leaves-area {
+    position: relative;
+    width: calc(var(--page-w) * var(--page-count));
+    height: var(--page-h);
+    perspective: 2600px;
+    transition: width 0.25s ease;
+  }
+
+  .left-page, .right-page-under {
+    position: absolute;
+    top: 0;
+    width: var(--page-w);
+    height: var(--page-h);
+    overflow: hidden;
+  }
+  .left-page { left: 0; border-radius: 8px 0 0 8px; }
+  .right-page-under { left: var(--page-w); border-radius: 0 8px 8px 0; }
+  .single-page-mode .left-page { display: none; }
+  .single-page-mode .right-page-under { left: 0; border-radius: 8px; }
+
+  .page-face { width: 100%; height: 100%; padding: 40px 36px 46px; position: relative; background: var(--paper); color: var(--ink); }
+  .page-face::after { content:""; position:absolute; inset:0; box-shadow: inset 0 0 30px rgba(30,60,90,0.05); pointer-events:none; }
+
+  .flip-leaf {
+    position: absolute;
+    top: 0;
+    left: var(--page-w);
+    width: var(--page-w);
+    height: var(--page-h);
+    transform-style: preserve-3d;
+    transform-origin: left center;
+    z-index: 25;
+    visibility: hidden;
+  }
+  .single-page-mode .flip-leaf { left: 0; }
+  .flip-leaf.animating { transition: transform 0.8s cubic-bezier(.45,.05,.35,1); }
+  .flip-face { position:absolute; top:0; left:0; width:100%; height:100%; backface-visibility:hidden; overflow:hidden; }
+  .flip-face.front { border-radius: 0 8px 8px 0; }
+  .flip-face.back { transform: rotateY(180deg); border-radius: 8px 0 0 8px; }
+  .single-page-mode .flip-face.front,
+  .single-page-mode .flip-face.back { border-radius: 8px; }
+
+  .shine { position:absolute; inset:0; background: linear-gradient(90deg, rgba(30,60,90,0.18), transparent 35%, transparent 65%, rgba(30,60,90,0.18)); opacity:0; pointer-events:none; }
+  .flip-leaf.animating .shine { animation: shineSweep 0.8s cubic-bezier(.45,.05,.35,1); }
+  @keyframes shineSweep { 0%{opacity:0;} 45%{opacity:0.5;} 55%{opacity:0.5;} 100%{opacity:0;} }
+
+  .edge-shadow-left { position:absolute; top:0; bottom:0; left: var(--page-w); width:36px; background: linear-gradient(90deg, rgba(30,60,90,0.10), transparent); pointer-events:none; z-index:20; }
+  .single-page-mode .edge-shadow-left { display:none; }
+
+  .page-content {
+    font-family: 'Libre Caslon Text', serif;
+    font-size: 15px;
+    line-height: 1.45;
+    text-align: left;
+    height: 100%;
+    overflow: hidden;
+  }
+  .page-content p { margin: 0 0 0.55em 0; text-indent: 1.4em; }
+  .page-content p.no-indent { text-indent: 0; }
+  .page-content p.chapter-heading {
+    font-weight: 700;
+    font-size: 1.2em;
+    margin-bottom: 0.9em;
+    text-indent: 0;
+    color: var(--accent);
+  }
+  .page-content p.subtitle-heading {
+    font-weight: 700;
+    margin-bottom: 0.7em;
+    margin-top: 0.3em;
+    text-indent: 0;
+    color: var(--ink);
+  }
+
+  .page-content.title-page {
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    font-family: 'Libre Caslon Text', serif;
+  }
+  .page-content.title-page .t-title { font-size: 27px; font-weight:700; line-height:1.25; margin-bottom:16px; }
+  .page-content.title-page .t-subtitle { font-family:'Inter',sans-serif; font-size:12.5px; line-height:1.5; max-width:290px; opacity:0.75; margin-bottom:6px; }
+  .page-content.title-page .t-rule { width:56px; height:1px; background:currentColor; opacity:0.35; margin:16px 0; }
+  .page-content.title-page .t-sub { font-family:'Inter',sans-serif; font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; opacity:0.65; }
+  .page-content.end-page { display:flex; align-items:center; justify-content:center; height:100%; font-family:'Libre Caslon Text', serif; font-style:italic; font-size:20px; opacity:0.7; }
+
+  .folio { position:absolute; bottom:18px; font-family:'Inter', sans-serif; font-size:11px; opacity:0.5; color: var(--accent); }
+  .left-page .folio, .flip-face.back .folio { left:36px; }
+  .right-page-under .folio, .flip-face.front .folio { right:36px; }
+
+  .zone { position:absolute; top:0; height:100%; width:34%; z-index:60; cursor:pointer; }
+  .zone.prev { left:0; }
+  .zone.next { right:0; }
+
+  .nav-btn {
+    position:absolute; bottom:12px; z-index:70;
+    width:38px; height:38px; border-radius:50%;
+    border:1px solid #c9a877; background:#faf3e2; color:var(--accent);
+    font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 4px 10px rgba(60,35,15,0.2);
+  }
+  .nav-btn:hover:not(:disabled) { background:#ecdfc0; }
+  .nav-btn:disabled { opacity:0.3; cursor:default; }
+  .nav-btn.prev-btn { left:-19px; }
+  .nav-btn.next-btn { right:-19px; }
+
+  .progress-wrap {
+    position:absolute; bottom:26px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:10px;
+    font-family:'Inter', sans-serif; font-size:11px; color:#a9906a; z-index:50;
+  }
+  .progress-track { width:150px; height:2px; background:rgba(47,102,144,0.18); position:relative; }
+  .progress-fill { position:absolute; top:0; left:0; height:100%; background:var(--accent); transition:width 0.4s ease; }
+
+  .loading-note { position:absolute; bottom:-28px; left:50%; transform:translateX(-50%); font-family:'Inter', sans-serif; font-size:11px; color:#a9906a; }
+
+  .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+  /* ---------- Lock screen ---------- */
+  .lock-screen {
+    position:fixed; inset:0; z-index:500;
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at 50% 30%, var(--stage-bg-1), var(--stage-bg-2) 70%);
+  }
+  .lock-card {
+    width:min(380px, 88vw);
+    background: linear-gradient(160deg, var(--case-blue), var(--case-blue-dark));
+    border-radius:8px; padding:36px 30px;
+    box-shadow: 0 30px 70px rgba(60,35,15,0.35);
+    text-align:center;
+  }
+  .lock-card .lock-icon { font-size:28px; margin-bottom:10px; }
+  .lock-card h1 { font-family:'Libre Caslon Text', serif; font-weight:700; color:#fff; font-size:21px; margin:0 0 6px 0; }
+  .lock-card p { font-family:'Inter', sans-serif; font-size:12.5px; color:#ecdfc0; line-height:1.5; margin:0 0 20px 0; }
+  .lock-card input[type="text"] {
+    width:100%; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.3);
+    color:#fff; padding:11px 12px; border-radius:4px; font-family:'Inter', sans-serif;
+    font-size:14px; letter-spacing:0.04em; text-align:center; text-transform:uppercase;
+  }
+  .lock-card input[type="text"]::placeholder { color: rgba(255,255,255,0.6); }
+  .lock-card .unlock-btn {
+    width:100%; margin-top:12px; background:#faf3e2; color:var(--accent);
+    border:none; padding:11px 12px; border-radius:4px; font-family:'Inter', sans-serif;
+    font-weight:700; font-size:13px; cursor:pointer;
+  }
+  .lock-card .unlock-btn:hover { background:#ecdfc0; }
+  .lock-card .unlock-btn:disabled { opacity:0.6; cursor:default; }
+  .lock-error { font-family:'Inter', sans-serif; font-size:12px; color:#ffd9d4; margin-top:12px; min-height:16px; }
+  .lock-buy-link { display:inline-block; margin-top:18px; font-family:'Inter', sans-serif; font-size:11.5px; color:#fff; text-decoration:underline; }
+  .lock-dev-note { margin-top:16px; font-family:'Inter', sans-serif; font-size:10.5px; color:#d8c7a3; line-height:1.5; }
+
+  /* ---------- Cover gate (closed book) ---------- */
+  .cover-gate {
+    position:fixed; inset:0; z-index:300;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction: column;
+    gap: 18px;
+    background: radial-gradient(ellipse at 50% 30%, var(--stage-bg-1), var(--stage-bg-2) 70%);
+    cursor:pointer;
+  }
+  .cover-gate-frame {
+    width: min(360px, 78vw);
+    aspect-ratio: 2 / 3;
+    background: #faf3e2;
+    border-radius: 12px;
+    box-shadow: 0 30px 70px rgba(60,35,15,0.35), 0 0 0 1px #c9a877;
+    display:flex; align-items:center; justify-content:center;
+    overflow: hidden;
+    padding: 10px;
+  }
+  .cover-gate-image { width:100%; height:100%; object-fit: contain; display:block; }
+  .cover-gate-hint {
+    font-family:'Inter', sans-serif; font-size:13px; font-weight:600; letter-spacing:0.04em;
+    color: var(--accent); background:#faf3e2; padding:9px 18px; border-radius:20px;
+    box-shadow: 0 6px 16px rgba(60,35,15,0.2);
+    animation: pulseHint 2.2s ease-in-out infinite;
+  }
+  @keyframes pulseHint { 0%,100%{ opacity:0.75; } 50%{ opacity:1; } }
+
+  /* ---------- Modal (load a book) ---------- */
+  .modal-backdrop { position:fixed; inset:0; background:rgba(20,40,60,0.45); display:none; align-items:center; justify-content:center; z-index:200; }
+  .modal-backdrop.open { display:flex; }
+  .modal { width:min(560px, 90vw); max-height:80vh; background:#faf3e2; border:1px solid #c9a877; border-radius:6px; padding:22px; display:flex; flex-direction:column; gap:12px; }
+  .modal h2 { font-family:'Libre Caslon Text', serif; color:var(--accent); margin:0 0 4px 0; font-size:19px; font-weight:700; }
+  .modal label { font-family:'Inter', sans-serif; font-size:12px; color:#a9906a; }
+  .modal input[type="text"] { width:100%; background:#f1e3c2; border:1px solid #c9a877; color:#2b2113; padding:9px 10px; border-radius:3px; font-family:'Inter', sans-serif; font-size:14px; }
+  .modal textarea { width:100%; min-height:220px; background:#f1e3c2; border:1px solid #c9a877; color:#2b2113; padding:10px; border-radius:3px; font-family:'Libre Caslon Text', serif; font-size:13.5px; line-height:1.5; resize:vertical; }
+  .modal .row { display:flex; gap:10px; align-items:center; }
+  .modal .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
+  .modal .actions .chrome-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+  .modal .actions .chrome-btn.primary:hover { background:var(--accent-light); }
+  .file-btn { font-family:'Inter', sans-serif; font-size:12px; color:var(--accent); text-decoration:underline; cursor:pointer; }
+.load-status { font-family:'Inter', sans-serif; font-size:11.5px; color:#a9906a; min-height:14px; }
+.load-status.error { color:#b5432f; }
+.modal select { width:100%; background:#f1e3c2; border:1px solid #c9a877; color:#2b2113; padding:9px 10px; border-radius:3px; font-family:'Inter', sans-serif; font-size:14px; }
+.modal .range-row { display:flex; align-items:center; gap:10px; }
+.modal input[type="range"] { flex:1; accent-color: var(--accent); }
+.modal .range-value { font-family:'Inter', sans-serif; font-size:12px; color:var(--accent); min-width:34px; text-align:right; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flip-leaf.animating { transition: none !important; }
+    .flip-leaf.animating .shine { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="lock-screen" id="lockScreen">
+    <div class="lock-card">
+      <div class="lock-icon">&#128278;</div>
+      <h1>Vineys Reader</h1>
+      <p>Enter the access key from your purchase to start reading.</p>
+      <input type="text" id="lockInput" placeholder="ACCESS KEY" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button class="unlock-btn" id="unlockBtn">Unlock my book</button>
+      <div class="lock-error" id="lockError"></div>
+      <a class="lock-buy-link" id="lockBuyLink" href="#" target="_blank" rel="noopener">Don't have a key yet? Get your copy</a>
+      <div class="lock-dev-note" id="lockDevNote" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="cover-gate" id="coverGate">
+    <div class="cover-gate-frame">
+      <img src="cover.jpg" alt="Book cover" class="cover-gate-image">
+    </div>
+    <div class="cover-gate-hint">Tap to open</div>
+  </div>
+
+  <div class="stage">
+    <div class="topbar">
+      <div class="brand">Vineys Reader <span class="book-title" id="brandTitle">THE COLOURED BIBLE</span></div>
+      <div class="topbar-controls">
+        <div class="btn-group" aria-label="Page layout">
+          <button id="onePageBtn" aria-pressed="false">1 Page</button>
+          <button id="twoPageBtn" class="active" aria-pressed="true">2 Page</button>
+        </div>
+        <div class="btn-group" aria-label="Zoom">
+          <button id="zoomMinus" aria-label="Zoom out">&minus;</button>
+          <button id="zoomReset" aria-label="Reset zoom" title="Reset zoom">&#10226;</button>
+          <button id="zoomPlus" aria-label="Zoom in">+</button>
+        </div>
+        <button class="chrome-btn" id="narrateBtn">&#128266; Read aloud</button>
+        <button class="chrome-btn" id="voiceSettingsBtn" title="Choose voice, pitch and speed">&#9881; Voice</button>
+        <button class="chrome-btn" id="openLoad">Load a book</button>
+      </div>
+    </div>
+
+    <div class="book-wrap" id="bookWrap">
+      <div class="book" id="bookEl">
+        <div class="spine"></div>
+        <div class="ribbon" id="ribbon"></div>
+        <div class="leaves-area" id="leavesArea">
+          <div class="left-page">
+            <div class="page-face">
+              <div class="page-content" id="leftContent"></div>
+              <div class="folio" id="leftFolio"></div>
+            </div>
+          </div>
+          <div class="right-page-under">
+            <div class="page-face">
+              <div class="page-content" id="underContent"></div>
+              <div class="folio" id="underFolio"></div>
+            </div>
+          </div>
+          <div class="edge-shadow-left"></div>
+
+          <div class="flip-leaf" id="flipLeaf">
+            <div class="flip-face front">
+              <div class="page-face">
+                <div class="page-content" id="frontContent"></div>
+                <div class="folio" id="frontFolio"></div>
+              </div>
+            </div>
+            <div class="flip-face back">
+              <div class="page-face">
+                <div class="page-content" id="backContent"></div>
+                <div class="folio" id="backFolio"></div>
+              </div>
+            </div>
+            <div class="shine"></div>
+          </div>
+
+          <button class="nav-btn prev-btn" id="prevBtn" aria-label="Previous page">&#10094;</button>
+          <button class="nav-btn next-btn" id="nextBtn" aria-label="Next page">&#10095;</button>
+          <div class="zone prev" id="zonePrev"></div>
+          <div class="zone next" id="zoneNext"></div>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <span id="progressLabel">1 / 1</span>
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div class="loading-note" id="loadingNote" style="display:none;">Paginating&hellip;</div>
+      <div class="sr-only" id="pageAnnouncer" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="measurer" class="page-content" style="position:absolute; visibility:hidden; top:-9999px; left:-9999px; width:calc(var(--page-w) - 72px); height:auto; overflow:visible;"></div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h2>Load a book</h2>
+      <label for="titleInput">Title</label>
+      <input type="text" id="titleInput" placeholder="e.g. The Secret Garden">
+      <label for="authorInput">Author (optional)</label>
+      <input type="text" id="authorInput" placeholder="e.g. Frances Hodgson Burnett">
+      <label for="textInput">Paste the text, or</label>
+      <div class="row">
+        <span class="file-btn" id="fileTrigger">upload a .txt or .docx file</span>
+        <input type="file" id="fileInput" accept=".txt,.docx" style="display:none;">
+      </div>
+      <div class="load-status" id="loadStatus" aria-live="polite"></div>
+      <textarea id="textInput" placeholder="Paste the full text of the book here. Separate paragraphs with a blank line."></textarea>
+      <div class="actions">
+        <button class="chrome-btn" id="cancelLoad">Cancel</button>
+        <button class="chrome-btn primary" id="confirmLoad">Open book</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="voiceModalBackdrop">
+    <div class="modal">
+      <h2>Read-aloud voice</h2>
+      <label for="voiceSelect">Voice</label>
+      <select id="voiceSelect"></select>
+      <label for="pitchRange">Pitch</label>
+      <div class="range-row">
+        <input type="range" id="pitchRange" min="0.7" max="1.3" step="0.05" value="1">
+        <span class="range-value" id="pitchValue">1.00</span>
+      </div>
+      <label for="rateRange">Speed</label>
+      <div class="range-row">
+        <input type="range" id="rateRange" min="0.7" max="1.2" step="0.05" value="0.95">
+        <span class="range-value" id="rateValue">0.95</span>
+      </div>
+      <div class="load-status" id="voiceStatus" aria-live="polite"></div>
+      <div class="actions">
+        <button class="chrome-btn" id="cancelVoice">Cancel</button>
+        <button class="chrome-btn primary" id="saveVoice">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.0/mammoth.browser.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Access gate configuration ----------
+  var WORKER_URL = "https://viney-payment.viney293.workers.dev";
+  var ACCESS_CHECK_URL = WORKER_URL + "/verify";
+  var BUY_PAGE_URL = "buy.html";
+  var STORAGE_KEY = "vineys_access_key";
+  var VOICE_PREF_KEY = "vineys_voice_uri";
+  var PITCH_PREF_KEY = "vineys_voice_pitch";
+  var RATE_PREF_KEY = "vineys_voice_rate";
+  var DEV_MODE = WORKER_URL.indexOf("YOUR-WORKER-SUBDOMAIN") !== -1;
+
+  // ---------- Book content ----------
+  var BOOK_TITLE = "THE COLOURED BIBLE";
+  var BOOK_SUBTITLE = "A Handbook for Reclaiming Our Identity, Restoring Our Dignity, and Charting a Path Forward for the Coloured People of South Africa";
+  var BOOK_AUTHOR = "The Coloured Conscious (Vincent Hendricks)";
+  var BOOK_HEADINGS = [
+    "Prologue: Before We Can Agree on Who We Are",
+    "Foreword",
+    "Endorsements",
+    "Introduction",
+    "Chapter 1: The Awakening",
+    "Chapter 2: Bastards of History or Bridge of Humanity?",
+    "Chapter 3: Survival in the Shadows",
+    "Chapter 4: Reclaiming the Word \u201cColoured\u201d, From Shame to Signal",
+    "Chapter 5: The War for the Coloured Mind",
+    "Chapter 6: What We Must Now Teach Our Children",
+    "Chapter 7: From Movement to Mandate, Building the Coloured Nation",
+    "Chapter 8: The Cultural Engine, Language, Music, Faith, and the Soul of a People",
+    "Chapter 9: The Youth Fire, When the Next Generation Stops Waiting",
+    "Chapter 10: The New Politics, Redefining Power, Reclaiming Policy",
+    "Chapter 11: Reclaiming the Coloured Mind, From Psychological Oppression to Mental Sovereignty",
+    "Chapter 12: Cultural Warfare, From Stolen Expression to Strategic Reclamation",
+    "Chapter 13: Economic Colonisation, How Coloured Labour Built the Nation But Was Never Allowed to Own It",
+    "Chapter 14: Political Betrayal, Why Both the ANC and DA Sold Us Out",
+    "Chapter 15: How We Lost Our Soul and How We Rebuild It, Identity Through Art, Memory, and Storytelling",
+    "Chapter 16: The Collective Coloured Consciousness",
+    "Chapter 17: The Covenant, A Closing Word",
+    "The Plan Forward",
+    "Glossary of Terms",
+    "Historical Timeline: The Coloured Experience"
+  ];
+  var BOOK_BODY_PARAS = [
+    "Prologue: Before We Can Agree on Who We Are",
+    "The purpose of this prologue, before introducing you to the contents of the book, is to address the real elephants in the room when initiating a conversation with Coloured people, and more so, when expressing opinions among ourselves about being Coloured, especially about Coloured unity, or, as many would rather I say, the lack thereof.",
+    "The first elephant: I totally denounce the widely imprinted notion, shared by the majority of us, that we are simply unable to unite as a people. It is a false notion, and I will attempt to shatter it in one of this book\u2019s chapters by sketching a reality that shows we have, in fact, formed, and have always been in possession of, a Coloured unity so powerful that we took from the ANC a domain we could have safeguarded, through the necessary laws and regulations, for Coloured economic and employment empowerment, education, health, and housing, alongside project funding that, together with other municipal and provincial budgets, could have served as a safety net for Coloured communal reparations programmes, and secured Coloured development and social stability. Instead, through sheer failure to realise how mentally enslaved we still are, we gained nothing from it.",
+    "The second elephant in the Coloured conversation room is aimed at those among us who label every Coloured initiative, protest, and activist pushback by Coloured leaders, against perceived racism and against the deliberate political exclusion of Coloured people, as itself racist, or as racism. It is also aimed at addressing the various groupings within our collective Coloured makeup: groupings whose political views, and ultimately their political paradigms regarding their origins, their sense of peoplehood, and their reasoning as to whether any case exists for acting in defence of our collectively shared reputation, integrity, the future of our children, and our basic rights as an identity group, were negatively shaped by their perception of the word Coloured, and by the ugly, apartheid-era struggle rhetoric attached to it.",
+    "Before you read a single chapter of this book, I need you to also remember, this book is not for the faint-hearted. It is not for those still addicted to approval, still begging to be seen, still seeking permission to exist. The Coloured Bible was not written to be palatable. It was written because it has become necessary to put into words our discomfort with the fact that we, as a historically oppressed, deprived, and marginalised people, have once again, in this new South Africa, become victims of wrong perceptions and stereotypes surrounding our Coloured identity, and our status as a people whose origins lie right here in South Africa, on this continent.",
+    "It is a book to highlight the similarities we all feel, experience, fear, are uncomfortable with, and find ourselves unable to express, in our commitment to nation-building, and to a genuine refusal, and various fights and reprimand amongst ourselves, to raise unnecessary political grievances that could easily be mistaken for racism, or that could fuel racial tension.",
+    "So to everyone amongst you who is, by nature, prone to reaching for \u201cracism,\u201d or the nearest liberal-approved escape route, whenever confronted with the word Coloured, I need you to ease up. Ease up on the anger. Ease up on the need to act ignorant just to prove you are something other than the many unfortunate, characterising narratives the word has come to describe us by.",
+    "This book isn\u2019t asking you to surrender your ancestry, your politics, your African identity, your Khoisan heritage, your European blood, your class consciousness, or your humanity. It\u2019s here to start a conversation, explaining how those well-afforded rights to claim ownership of, and to practice, both your parents\u2019 racial, ethnic, and tribal lineages, cultures, and traditions, together with the general hatred of the word Coloured, has inadvertently also added to the dysfunctional approaches with which we relate to our responsibilities towards each other and the children of our shared Coloured identity. Over decades, it has influenced our ability to act in the interest and general protection of our identity and origin rights as the mixed-race people of South Africa. And so I ask: is it possibly our fight, over decades, over the word \u201cColoured\u201d itself, that has divided us more deeply than history ever did, and is that division, not the word, what has led to the social dysfunction and stereotypes that Black people, white people, and others have historically defined us by? More than that: despite our huge love for each other, our shared love of the same music and so many other things unique to us, isn\u2019t it this divide, our failure to find common ground on the things that threaten our identity and reputation as a people, that has led to this great failure toward our children?",
+    "Yes, because of our mixed racial, ethnic, and tribal origins, there are many justified arguments among the many differences that prove the Coloured collective is not one voice. One of the main arguments fuelling this divide, one still shaping how we express ourselves as people legally classified Coloured, and therefore how we understand our responsibility to defend our shared interests and to protest discriminatory, race-based policies that name us as Coloured, is rooted in the resistance many of us still feel toward a word once used across the board, under apartheid, to classify everyone with brown skin.",
+    "As a result, many Coloured people in the interior have chosen to lean instead toward their European ancestry, or have proudly reclaimed their Khoisan and, primarily, their African roots, exercising their rightful ancestral claim. In doing so, though, many have alienated themselves from the term Coloured, and, without realising it, alienated themselves individually from acting collectively against the things that threaten Coloured development, economic growth, and social acceptance.",
+    "Among those who run from the word Coloured, and who, indirectly, indoctrinate themselves against defending the Coloured identity from discrimination, are those who shaped their politics around a long relationship with struggle politics, and who became deeply suspicious of racial identity altogether. I call them Congress Coloureds, Pan-Africanist Coloureds, or simply Comrade Coloureds: those for whom being considered part of the Coloured grouping became, in their eyes, a racist notion. \u201cI am not Coloured. I am human\u201d became their doctrine, the claim through which they sought recognition from Black and white South Africans alike as equals in humanity.",
+    "The devastating irony in all of this is that this resistance, by different Coloured groupings, to the Coloured classification has, indirectly, undermined our ability to unite against threats to our demographic rights and basic cultural identity. It weakened our ability to resist, in unified protest, policies like the current employment equity legislation and the many quota systems that mandated tender boards, universities, technikons, and government funding initiatives to cap or exclude Coloured people by race in their intake numbers.",
+    "This left Coloured people in a strange position: the one race group genuinely resistant to any racial unification of its own, for fear that such unification might trigger a repeat of history, and deepen the already fraught relationship between Coloured and Black South Africans. That relationship had been shaped for generations by white rulers, and especially by the apartheid system, which taught Coloured people to see Black South Africans as the great danger.",
+    "And so, in committing to the principles of nation-building, non-racialism, integration, and the levelling of the political playing field, more visibly, in some respects, than white, Black, or Indian South Africans did, Coloured communities found themselves fighting against their own: against those within their communities, institutions, and workplaces who resisted Black integration, who resisted Black advancement into jobs and the economy, and who organised against Black inclusion. This all unfolded in a politically shifting landscape, where Coloured people alone stood against those in their own ranks who opposed the employment, development, and empowerment initiatives that the ANC had mandated by law to secure Black advancement across all spheres of our nation, a shift that, in turn, drew a unified and internationally funded response from white South Africans determined to prevent Black economic and political power from ever threatening their own interests, lifestyles, and global standing.",
+    "The truth in that is simple: we are human.",
+    "So are the Zulu. So are the Afrikaner. So is every African who has kept a name and stayed fully human doing it. No Zulu is less human for saying \u201cI am Zulu.\u201d So why must a Coloured person erase the first half of that sentence to earn the second?",
+    "Maybe we\u2019ve been fighting the wrong battle. So let me ask you directly:",
+    "If you seek white acceptance, why should someone else\u2019s recognition decide how you live with yourself?",
+    "If you reject the word for its apartheid history, must the people who abused it own its meaning forever?",
+    "If you insist you are only human, does universal humanity really demand that particular identity disappear?",
+    "And if you\u2019ve grown angry at anyone who claims the word Coloured, what if that anger is pulling you away from the very people whose history made you?",
+    "Because whether we like it or not, we are connected by more than a government form. Shared communities, families, language, memory, struggle, stereotype. We didn\u2019t choose that connection, and we can\u2019t undo it by refusing to say the word.",
+    "Maybe it\u2019s the word itself we should reconsider. \u201cColoured\u201d has been made to sound like an insult by the history around it, but colour isn\u2019t ugly. A rainbow is colour. A prism is colour. We let the people who used the word to shame us convince us the word itself was the shame.",
+    "The Coloured Bible starts from a different place: that we don\u2019t have to choose between our fragments. That we can hold Khoisan, African, European, and Asian ancestry together without any one erasing the rest. That being Coloured doesn\u2019t have to mean less African, less European, less human. It can simply mean:",
+    "This is what history made us.",
+    "I\u2019m not asking you to agree before you read. I\u2019m asking you to put the anger down long enough to look. Because if we can\u2019t even discuss who we are without fighting over the name, we\u2019ll never build anything together.",
+    "So, liberal Coloured, Comrade Coloured, Khoisan-conscious, European-conscious, African-conscious, class-conscious, and the Coloured who simply says \u201cthis is who I am,\u201d this book is for you. Disagree with it. Argue with it. Get angry at it. But read it first.",
+    "Because this was never really a book about a word. It\u2019s one question:",
+    "After everything history has done to us, who are we prepared to become?",
+    "Foreword",
+    "This work is born from decades of frustration, observation, and painful clarity. It is the product of a life lived in the grey zones, between black and white, silence and rage, visibility and erasure. For too long, Coloured people in South Africa have wandered in a desert of confusion, trying to make sense of an identity that history tried to delete and politics tried to exploit.",
+    "We are not the in-between. We are the bridge.",
+    "This book reclaims our story. It intends to reprogram our understanding of self, from internalised shame to evolutionary pride. It challenges the lies we were taught to believe about ourselves, and hands us a weapon sharper than any protest: Truth.",
+    "Endorsements",
+    "\u201cThis isn\u2019t just a book. It\u2019s a reckoning. It\u2019s a mirror. It\u2019s a damn revolution.\u201d \u2014 Fadiel Adams, Leader of the NCC",
+    "\u201cThe Coloured Bible will become required reading for any South African who wants to understand the unfinished business of our democracy.\u201d \u2014 Melaney Cloete, Youth Activist",
+    "\u201cVincent Hendricks writes like he\u2019s fighting for our lives, because he is. Every chapter is a wake-up call.\u201d \u2014 Ashley Booysen, Educator & Community Leader",
+    "\u201cAt last, someone had the guts to name what we\u2019ve all felt for years. Our time starts here.\u201d \u2014 Chantal September, Businesswoman & Mother",
+    "\u201cA necessary, urgent text. Not just for Coloureds, but for anyone interested in the real story of South Africa.\u201d \u2014 Prof.\u00a0Keenan Abrams, Political Sociologist",
+    "Introduction",
+    "This is not a gospel of salvation in the next world. This is a survival manual for this one. A blueprint for rebirth. A declaration of presence. A warning and a weapon.",
+    "I didn\u2019t write The Coloured Bible to convert.",
+    "It was written to awaken. It began as a manuscript of memory, drawn from lived experience, generational trauma, street wisdom, and historical truth. It\u2019s a handbook, a doctrine, a rebellion. A manual to reprogram the Coloured Conscious, to replace inherited shame with evolutionary pride. To remind a forgotten people that they are not an afterthought. They are the aftershock.",
+    "The Coloured Bible is not about God, it\u2019s about genesis. It tells the origin story that textbooks buried and both white and black politics distorted.",
+    "In these pages, Coloureds will not be portrayed as the leftovers of history. They are its most pivotal product: the evolutionary bridge born from catastrophe. The living consequence of the world\u2019s most brutal event, colonialism, and the interracial realities it birthed. The genetic intersection of slave and settler, native and migrant, captor and captive.",
+    "And still, we emerged. Not as the confusion, as the convergence.",
+    "The Coloured story, filled with fragmentation and fusion, is the most honest mirror of what not only South Africa, but the world has become, and perhaps what humanity is destined to become: a hybrid people, unbound by inherited tribalism, untouched by the guilt or arrogance of racial supremacy.",
+    "But this is not just a theory book. It\u2019s a war cry. A therapy. A weapon. A path.",
+    "We named the attacks: the drug economy allowed to spread like fire. The schooling crisis disguised as reform. The silent policies that pushed Coloureds out of housing queues, job lines, and historical recognition. The invisibility enforced through \u201crainbow nation\u201d propaganda, where black pain was centred and white power protected, while Coloured struggle was made to feel illegitimate.",
+    "We named the betrayal: the ANC using us as props, then discarding us for numbers. The DA parading Coloured faces while choking out real Coloured voices. The religious institutions that asked us to forgive before we were even heard. The media that never tells our story unless it bleeds, burns, or bows.",
+    "We revealed the mental prisons:",
+    "Too dark to be white. Too light to be black. Too angry for comfort. Too passive for respect. We were told to shrink. To choose a side. To \u201cbehave.\u201d",
+    "Instead, this book dares to do what no party, church, or government ever did: hand the mic to the Coloured mind. The Coloured Bible does not seek approval. It seeks alignment, between who we are, where we came from, and where we are meant to go.",
+    "It calls for a mental insurrection: to unlearn the shame, to decode the silence, to name the war, to own the identity before it\u2019s renamed again, to lead, not just politically, but evolutionarily.",
+    "Because when history brought the storm, Coloureds were the lightning and the ash. Not victims. Not villains. The evidence of survival. The blueprint of convergence.",
+    "Before we go further, we owe you truths. Not comfortable ones. Not ones that flatter either side of this country\u2019s politics. Just truths.",
+    "Here is the first one, and it is the one nobody in South African politics wants said out loud: there is a war for this country that never ended, it only changed uniforms. On one side, a white conservative force, no longer wearing khaki or standing behind a podium calling it apartheid, but still organised, still funded, still intent on holding onto white political and economic power, and calling the holding of it \u201cstability,\u201d \u201cgood governance,\u201d \u201cprotecting standards.\u201d On the other side, an equally determined black nationalist and tribal force, intent on establishing black political and economic dominance, and calling that ambition \u201ctransformation,\u201d \u201credress,\u201d \u201cmajority rule.\u201d Both sides have a right to want power. That is not the lie. The lie is what happens to the people standing in the middle of that war who were never issued a uniform.",
+    "Because the Coloured is that people. We are the abused political victim of the South African story, not a bystander to this war, not a footnote in it, but the terrain it gets fought over. Every election, we are the swing vote both sides need and neither side wants to actually serve. Every policy, we are the population too \u201cadvantaged\u201d for black redress and too \u201cother\u201d for white protection. We didn\u2019t start this war. We have simply been standing on the battlefield for three hundred years, and both armies have used us as cover.",
+    "Here is the second truth, and this one is harder to say because it points inward before it points out: we are, in places, a self-destructive people. Not because we were born broken. Because we are victims of our own mentality, and victims of our history, and there is a difference between naming that as an excuse and naming it as a diagnosis. We are naming it as a diagnosis. We inherited a war we didn\u2019t start and, somewhere along the way, some of us picked up the enemy\u2019s weapons and turned them on each other, and on ourselves: gossip as combat, addiction as anaesthetic, self-hatred dressed up as humility. That self-destruction is not our nature. It is what three hundred years of being nobody\u2019s priority does to a people, if that people is never told, in time, that it can put the weapon down.",
+    "We are not telling you these truths to make you comfortable. We told you at the start, this book was not written to be palatable. We are telling you because a people who do not know they are standing between two armies will keep mistaking the crossfire for their own war, and a people who do not know their wounds are inherited will keep treating the wound as their identity. Once you see both of these truths clearly, the rest of this book stops being an argument and starts being a mirror.",
+    "This is our new covenant. Not with heaven, but with ourselves. This is the Coloured Bible.",
+    "Chapter 1: The Awakening",
+    "We need to talk as adults. Before we speak to the children, we must face each other.",
+    "We\u2019ve lied, to ourselves, to each other. We buried the truth under pride, shame, silence, and Sunday manners. We survived, but not all survival is living. We made it through apartheid only to be demoted in democracy. We took the beating and were made invisible at the celebration. We passed the trauma down wrapped in jokes, in alcohol, in false smiles. We taught our children obedience instead of power, silence instead of pride. We taught them how to behave, not how to lead.",
+    "And here is the part we keep avoiding: we stagnated. We got comfortable in survival mode, mistook getting by for getting somewhere, and stopped pushing while the ground kept shifting under our children\u2019s feet. While we stood still, congratulating ourselves for making it through apartheid, a new, quieter neglect crept back in, wearing the language of policy instead of the language of race. And because we stagnated, our children are now facing that renewed political neglect and discrimination almost entirely alone.",
+    "In our poorer Coloured areas, this is not abstract. It is the Employment Equity Act closing doors before our young people even reach them. It is economic alienation that keeps whole communities locked out of industries growing everywhere else. It is a lack of access to decent education, and a near-total absence of funding for development initiatives that could break the cycle. Our apartheid-constructed \u201cskiems\u201d are the places hit hardest, and they are the places where we have lost the most control over our own children, because we grew too tired, too silent, or too resigned to keep fighting once our own survival felt secured.",
+    "And now they\u2019re asking us: what are we? Where do we come from? Where do we belong? We owe them an answer.",
+    "So, children, here is what we must say. We failed you by trying to fit in, black when convenient, white when it felt safer, nothing when it got complicated. We softened our tongues, hid our features, censored our stories. We told you to keep your head down, that it\u2019s safer to be seen as less than not seen at all. We told you to dream smaller, be grateful, stay quiet.",
+    "But you are stirring. And you\u2019re right to. You are not broken. You are not leftovers. You are not confused. You are the consequence of something terrible, and the possibility of something powerful.",
+    "We are Coloureds, not in the way the textbooks described or the politicians dismissed, but in the real, raw, scientific sense: the children of history\u2019s greatest collision. Born from slavery, from rape, from love, from rebellion, from resilience. Our DNA carries every shade, every struggle, every compromise this country has known. We are not the mistake. We are the mirror. Our origin is not a crime. It is a code.",
+    "The Natural Evolution Theory of Coloured Identity",
+    "We introduce it here for the first time, and we\u2019ll return to it throughout this book: from every catastrophe in human history, a new form of humanity emerges. Evolution isn\u2019t only about survival, it\u2019s about transformation. When the world broke, we formed. When tribes divided and empires collapsed, something new emerged: a people born from all others, from all races, ethnicities and tribes. Neither settler nor native, neither master nor slave, neither black nor white. All of it, and something more.",
+    "This is not confusion. This is convergence. But they told us it was shame, and we believed them. They turned our origin into an insult, our diversity into disorder. They erased our mothers and mocked our fathers, and made us beg for crumbs while we carried the recipe for tomorrow\u2019s world in our blood.",
+    "We have the duty to defend and positively redefine this Coloured identity of ours, not for ego, not for politics, but because locked inside it is a blueprint for healing, for evolution, for human maturity. Our reputation has been weaponised against us, it decides how we are hired, housed, healed, and heard. If we don\u2019t redefine ourselves, others will, again, and every time they do, they steal something: opportunity, dignity, history.",
+    "Where the Path Begins",
+    "So what is the path to liberation? It begins in the mind, not the vote, not the church, not even the economy. First, the Coloured mind. A reprogramming. A rejection of borrowed shame. A radical ownership of our scars and our story. A refusal to be manipulated by parties, pastors, or promises that treat us as pawns.",
+    "Our liberation demands political independence, movements built by and for us. Cultural pride, restoring the music, language, food, and faces they erased. Historical clarity, rewriting the stories they buried. Economic justice, our fair share, not a seat begged for. And psychological healing, naming the pain, breaking the silence, raising our heads.",
+    "We must commit, to ourselves, to our children, to the next hundred years. Because if we don\u2019t, we die out. Not physically. Spiritually.",
+    "Chapter 2: Bastards of History or Bridge of Humanity?",
+    "They called us the \u201cbastards of history.\u201d Said we were the shameful result of rape, conquest, and colonial lust. Said we had no language, no land, no tribe, no true name. They called us Coloured, then told us not to say it too loudly. For a long time, we believed them.",
+    "We were told we were leftovers, fragments left in the middle, not black enough, not white enough, too impure to matter. That was never the truth. That was how systems maintain control: erase your origin, then write your identity for you. Now we tell our own story.",
+    "The Origins They Don\u2019t Teach",
+    "Colonialism was not just a theft of land. It was a theft of memory, a redrawing of bloodlines. The ships that arrived carried more than soldiers and missionaries; they carried genetic warfare. Slavery, rape, forced assimilation, arranged interbreeding, and yes, even forbidden love, created something the colonial mind never planned for: a new kind of people.",
+    "Our ancestors were never a single race. We descend from African slaves, European settlers, Asian workers, and indigenous Khoikhoi, San, and Griqua, every stolen or smuggled soul thrown into the storm of an empire that conquered. We did not \u201cmix\u201d in a moment of lust. We were fused over centuries in the furnace of domination. That fusion was not a mistake. It was the evolutionary birth of a new human synthesis.",
+    "The Khoisan Are Not Coloureds",
+    "Let\u2019s be clear: the Khoikhoi, Nama, San, and Griqua are our ancestors, but they are not Coloureds. They are ethnic nations with distinct languages, customs, and sovereign histories. What happened is this: they were conquered, scattered, and interbred with slaves and settlers, and from that catastrophe came us, a new people, born of multiple lineages, moulded by survival. To erase the distinction between Khoisan and Coloured is to confuse the root with the fruit. We must respect both.",
+    "Not Confusion. Convergence.",
+    "In science, when rivers merge, they don\u2019t become weaker. They become wider, stronger, more powerful. We are not a confused people. We are a converged one, what happened when the world collided and something new had to emerge to carry everyone\u2019s DNA forward.",
+    "Coloured people are a genetic and cultural hybrid, and that is our strength, not our shame. We are the bridge between the segregated parts of the world, proof that race is not a wall. It\u2019s a tunnel, and we\u2019ve already passed through it.",
+    "The Truth Hidden in Our Blood",
+    "Do you know what\u2019s hidden inside a Coloured surname? A trail of dispossession. A map of empire. A record of both conquest and resilience. Every Coloured person carries the tangled thread of humanity\u2019s worst crimes and best possibilities. Our story isn\u2019t neat or clean. But it is honest, and that honesty is powerful.",
+    "Why did they fear our identity? Because if you could trace your lineage to Europe, Africa, Asia, and the indigenous nations at once, how could they define you? They couldn\u2019t. So they labelled us instead: Coloured. And made the word feel like dirt in our mouths. We are reclaiming it now, not as their insult, but as our instruction. We are Coloured because we reflect the colours of the world.",
+    "We were not planned. We were not asked for. We emerged anyway, forged through oppression, baptised in poverty, shaped by survival. We are not a broken piece of someone else\u2019s people. We are a people. South Africa needs to be educated on it, and the visiting world needs to know it.",
+    "And if we claim it fully, we become what we were always meant to be: not a race, not a vote, not a label, but the next stage in humanity\u2019s evolution. This is the Coloured Bible. Take pride in that thought, bathe in it, adopt it, and tell others, we are the evolution.",
+    "Chapter 3: Survival in the Shadows",
+    "We\u2019ve always been here, in the factories, the kitchens, the taxis, the classrooms, keeping the country running while being told we don\u2019t exist. We are the forgotten middle: not poor enough to be pitied, not powerful enough to be feared. So they tucked us away, behind buffers of silence, myths, and shame. But silence is not surrender. And surviving is not the same as thriving. This chapter is for anyone who mistook coping for living.",
+    "The Invisible Majority",
+    "Coloured people were long the majority in the Western Cape, and remain a significant population in every major city in the country, yet in political language we are barely a footnote. The ANC sees us as a complication. The DA sees us as a voting block. Both use us. Neither knows us. The result: politically invisible, socially muted, economically disposable.",
+    "They point at our poverty and ignore the policies that entrenched it. They cite our addiction crises and never ask how the drugs got in while the police stood by. They talk about gangs as if we invented them, never asking who benefits from keeping us trapped in the cycle. We were not born broken. We were broken by design.",
+    "The Psychological Assault",
+    "Ask any Coloured child how it feels to be too light to be Black, too dark to be White, too \u201cother\u201d to belong. Ask what it\u2019s like to appear in a schoolbook only when apartheid is mentioned. Ask how it feels when your own people whisper, \u201cDon\u2019t act too proud, they\u2019re watching.\u201d",
+    "The most effective weapon used against us was never the sjambok or the ballot. It was psychological warfare. We were taught not to dream too big, not to speak too loud, not to stand too tall, trained to become workers, not thinkers; followers, not founders. We learned to silence our own pain whenever the national conversation turned to \u201cBlack liberation\u201d or \u201cWhite grievance,\u201d because somehow ours never qualified.",
+    "The Wound We Turned Inward",
+    "Here is a truth we owe you, and this is where it belongs: some of what we call \u201cjust how Coloureds are\u201d is not our nature. It is a self-destructive pattern, and we are, in places, a self-destructive people, not because we were born that way, but because we are victims of our own mentality, and victims of our history. There is a difference between saying that as an excuse and saying it as a diagnosis. This book says it as a diagnosis.",
+    "A people caught between two forces fighting over a country will eventually run out of places to put its anger, and when there is nowhere left to point it, some of it turns inward. That is where the gossip comes from, the crab-in-a-bucket pulling, the drink, the self-hate dressed up as jokes, the tearing down of our own before anyone else gets the chance. We inherited a war we did not start, and somewhere in three hundred years of standing in the middle of it, some of us picked up the enemy\u2019s weapons and turned them on each other, and on ourselves. That is not who we are. That is what happens to a people nobody made time to heal.",
+    "Addiction: The Designer Epidemic",
+    "Drugs didn\u2019t simply happen to Coloured communities. They were introduced, flooded in, marketed, and left unchecked. In places like the Cape Flats, drugs became not just a killer but a culture. With the drugs came the gangs. With the gangs, the prison pipeline. With the pipeline, another generation marked before it reached high school. What they call \u201cColoured crime\u201d is political neglect wearing a uniform.",
+    "The Turning Point",
+    "We survived apartheid, relocation, addiction, joblessness, betrayal. But survival becomes a prison when it stops you from dreaming. We learned to laugh at our pain, to be stylish in our struggle, to make music out of misery, and survival culture also kept us frozen, always adapting, never confronting. This book asks you to break that pattern. We are not just survivors. We are architects.",
+    "There is a generation rising that is not scared. They speak Coloured and proud, their curls, their mixed skin, their slang, their identity, worn like a badge. They are unlearning what was forced into our DNA, finding the language to say: we are enough, we are valid, we are the future.",
+    "This book is not just for the elders. It is a love letter to the youth, a message in a bottle that says: we failed to protect your name. Now we\u2019re building a new one.",
+    "Chapter 4: Reclaiming the Word \u201cColoured\u201d, From Shame to Signal",
+    "\u201cDon\u2019t call me Coloured.\u201d How many times have we heard it, even from our own mouths, as if the word were a curse, a wound never healed, something to escape rather than become? We\u2019ve misunderstood the power of the word. We didn\u2019t name ourselves, that\u2019s true. But we can define ourselves. This chapter is about reclamation, of language, of lineage, of leadership.",
+    "The Word They Gave Us",
+    "The apartheid regime used \u201cColoured\u201d to divide, to separate, to make us feel like half of everything and whole of nothing, a category built to fit nowhere. What they didn\u2019t know is that in naming us, they accidentally exposed the truth they were trying to hide: that we are everyone. That we are the convergence, not the confusion. That we are not a deviation from the norm, we are the new normal.",
+    "The Evolutionary Theory of Coloured Identity",
+    "Let\u2019s be bold: our existence is not an accident of rape, conquest, or apartheid classification. It is the natural result of human evolution. The world today is more mixed than it has ever been, interracial marriage, mixed-race children, global migration, everywhere. But we, the Coloured people of South Africa, were already that mixture, forged centuries ago in a harsher time. Our DNA is a survival story. Our identity reflects what humanity becomes when history breaks its borders and biology adapts. We are not confused. We are proof that humanity evolves.",
+    "Our Identity Is Our Weapon",
+    "They try to erase us because if we ever fully understood what we are, we would become unbreakable. We are not \u201cbetween Black and White.\u201d We are not \u201cnot enough of either.\u201d We are the bridge, and every bridge scares those who rely on walls. Locked in our name is a library of resistance. Locked in our culture is the memory of empires, resistance, and renewal. When we let others define \u201cColoured,\u201d we hand them the pen to write our children\u2019s future. It\u2019s time to take the pen back.",
+    "Rebirth Through Ownership",
+    "To be Coloured today must no longer be inherited trauma. It must be an intentional stance, something we own, not explain; something we develop, not deny. This book is not about romanticising suffering. It is about making meaning out of pain, and building a people from what was meant to stay fragments. We are the authors now. We write the script. Coloured is not a label. It is a language of the future.",
+    "Chapter 5: The War for the Coloured Mind",
+    "This war wasn\u2019t fought on a battlefield. No guns, no blood, no uniforms. It was fought in the classroom, the church, the jokes, the mirror, the vote. It still is. The goal was simple: make us believe we were less, less African, less human, less worthy of attention, protection, or power. They didn\u2019t need to chain our bodies. They trained us to chain our own thoughts. And it worked.",
+    "We believed we were \u201csecond place Blacks.\u201d We believed we were lucky to be in the middle. We believed \u201cnot too dark\u201d was safe and \u201cnot too proud\u201d was wise. So we kept quiet, kept humble, laughed at ourselves before anyone else could. Over time, it got harder to tell the difference between humility and humiliation.",
+    "Politics as Psychological Warfare",
+    "The DA sold us the lie of the model minority. The ANC sold us the lie that we weren\u2019t Black enough. Both parties, one with cold politeness, the other with warm indifference, treated us as tools, not citizens. Their instruments were drugs, to paralyse our youth and fracture our homes; poverty, to trap us in survival mode where dignity feels like a luxury; silence, to keep us out of media, policy, and history; and tokenism, to reward obedience over originality. Every time we questioned the system, we were told to be grateful, as if asking for justice were ingratitude.",
+    "What We Passed Down",
+    "Here is our shame: we passed it on. We raised our children with our trauma still active, told them not to rock the boat, that safety lived in staying neutral rather than becoming powerful. What did they inherit? A fragmented sense of self. A beautiful history buried under jokes and shame. A name they feel they must explain, or escape.",
+    "But we\u2019re still here, and that is the miracle. The Coloured mind hasn\u2019t died. It has been sleeping. Now, a stirring. Now, a sound. Now, the awakening. Our children are no longer asking permission. They are no longer embarrassed by the word Coloured. They are reclaiming it, remixing it, wearing it.",
+    "Chapter 6: What We Must Now Teach Our Children",
+    "\u201cYou were not born to apologize.\u201d",
+    "We raised our children to fit in, when we should have raised them to stand out. They must know that they descend from every corner of the world. That they carry the blood of warriors and survivors. That their culture is a symphony, not a broken record. That their identity is a map, not a mistake.",
+    "We should teach them that \u201cColoured\u201d is not the middle of anything, it is the birthplace of something new.",
+    "We should teach them that loving their people is not racism. That building a Coloured institution is not exclusion, it\u2019s correction. That telling their own story is not division, it\u2019s restoration.",
+    "Let our children see a generation of adults who stopped apologising. Let them hear us say it proudly, without flinching: \u201cI am Coloured, and I am the future, not the footnote.\u201d",
+    "Chapter 7: From Movement to Mandate, Building the Coloured Nation",
+    "This journey was never about noise. It was about naming, noticing, nurturing what was always there, buried under centuries of shame and survival. We began as a movement, a cry, a push-back, a rebellion. But cries fade, and rebellions die, unless they become structured, strategic, and self-sustaining.",
+    "A mandate. Not from the government. Not from the Constitution. From us.",
+    "What Is a Mandate?",
+    "A mandate is not a list of demands. It is a collective oath, a shared instruction to ourselves, from ourselves: this is who we are, this is what we defend, this is how we rise. It means governing ourselves before we are granted the power to do so externally. It means building Coloured leadership, Coloured economy, Coloured institutions, and Coloured consciousness that no one can cancel, ignore, or manipulate again. It means becoming a nation in mindset, in mission, and eventually in policy.",
+    "Why a Nation? Aren\u2019t We South African?",
+    "We are. But we are not treated equally within South Africa. We are not seen as founders of this democracy, as bearers of a culture worth protecting, as victims worth healing, or as voters worth courting. We are seen as a demographic. A percentage. A leftover. So if the state will not dignify us, we must become our own state of mind, a nation within a nation, not to separate, but to survive. Just as the Afrikaner once did, and the Black Consciousness movement once did, we must carve out a space of honour, memory, and mission, for us, and for every child of mixed origin still to be born in this country.",
+    "The Five Pillars of the Coloured Mandate",
+    "Identity Reclamation. Our history, our name, our struggle, our soul are ours to narrate and defend. We are the genetic intersection of nations, the original case study of what post-colonial humanity looks like.",
+    "Mental Liberation. No more inherited shame. We unlearn the scripts of inferiority and reprogram our people with pride, clarity, and vision, through art, curriculum, psychology, storytelling, repetition.",
+    "Economic Self-Reliance. We build our own business networks, cooperatives, support circles. We redirect Coloured capital into Coloured hands, and keep it there. We cannot beg for jobs in a system built to exclude us.",
+    "Cultural and Political Autonomy. We stop outsourcing our representation. No more leaders speaking someone else\u2019s script, or fearing Black rejection and white money more than they love their own people. Our parties, our media, our forums must speak our reality and pursue our agenda.",
+    "Inter-generational Continuity. This movement cannot die with us. It must be encoded in our children, taught in our homes, schools, churches, music, and sport, so the flame doesn\u2019t flicker. It spreads.",
+    "The Path Forward Is Not Easy",
+    "We will be mocked, accused, resisted, even by our own. Some will say we\u2019re dividing further. Others will say there are bigger issues. Still others will say, \u201cjust be South African.\u201d But we know the truth: this country has always found space for white power, and has made endless room for Black empowerment. It has never made peace with Coloured autonomy. Until now.",
+    "The Coloured Bible is not just a manuscript. It is a manual for mental nation-building. We are not trying to rewrite South Africa. We are rewriting ourselves, so that the next Coloured child born into this country inherits a nation that already knows who it is, what it is, and why it matters.",
+    "Chapter 8: The Cultural Engine, Language, Music, Faith, and the Soul of a People",
+    "There is a perception, held by many Black, White, and Indian South Africans, that Coloured people simply do not have a culture of our own. What that perception forgets is that our evolution out of so many races, ethnicities, and tribes did not leave us with nothing. It gave us permission, permission to merge, to fuse, to morph every one of those cultural associations and features into something new. That fusion is where our beats come from. That fusion is what let us make music no one else could have made, because no one else carries what we carry.",
+    "So this chapter starts with a request: step back to it. More than ever, we have started walking away from our own beats, adopting Black beats, adopting White beats, treating our own sound as something to leave behind rather than something to lead with. We need to force the world\u2019s acceptance of our way of speaking, our way of moving, our way of making something out of everything we were ever given. Like every other race, ethnicity, and tribe in this country, we understand exactly how important it is to hold on to culture. It is time we started acting like it.",
+    "When they couldn\u2019t control our bodies, they came for our minds. When they couldn\u2019t erase our bloodline, they tried to dilute our story. But they underestimated something so intimate, so organic, so deeply us, that no policy, no prison, no propaganda could kill it: our culture, our language, our music, our sayings, our rituals, our rhythm.",
+    "That was always our defence system, invisible armour worn while looking ordinary. It was the beat we danced to when the system wanted us to march. It was how we stayed sane when reality was insane, how we made joy out of rubble and family out of fragments. We didn\u2019t just survive apartheid. We remixed it into something musical, flavourful, faith-filled, and deeply human. This was never just culture. It was resistance.",
+    "Language, Kaaps as Code",
+    "They told us Kaaps was broken. It was never broken. It was forged, at the crossroads of slavery, migration, and survival, in kitchens, on street corners, at bus stops. Kaaps was never just slang. It was strategy: how the oppressed spoke among themselves without being fully understood by the oppressor. To speak Kaaps is to carry the memory of our mothers and the cleverness of our fathers. It is not beneath English. It is beyond it. We don\u2019t need permission to preserve it, we need to publish it, teach it, sing it, protect it, like every other national treasure.",
+    "Music, Survival in Sound",
+    "Our music is not entertainment. It is evidence, proof that even when our hearts were broken, they still beat. From the ghoema of District Six to the gospel choirs of the Cape Flats, from jazz that told stories without lyrics to klopse that turned New Year into resurrection: music gave us motion, and motion is the opposite of death. When we had no words for the rage, we danced it. Our music was protest in a party dress, telling the world we were still here, and worth hearing, even when no one else was listening.",
+    "Faith, Not Just Religion, but Resilience",
+    "Yes, many of us were converted to Christianity by colonial force, and much of our early faith was tainted by submissive doctrine. But what we did with it after was ours. We took a religion of oppression and turned it into a faith of resilience, made God our witness, our confidante, our counsellor. Our faith was never only about getting to heaven. It was about not losing our minds down here. Even as we reclaim our African spirituality and question what we were handed, we honour the power faith gave us in our darkest moments.",
+    "Humor, Food, Ritual, Our Hidden Language",
+    "We laughed. My God, did we laugh, even with empty pockets and an uncertain future, finding ways to mock the pain, flip the script, own the joke before it owned us. Our humour is surgical, sharp, healing, unforgiving. It\u2019s how we diagnose the madness.",
+    "Then there\u2019s food, not meals, memories. Koeksisters, snoek and patat, masala chicken, bredies, gatsby, warm vetkoek in a plastic packet. Each bite a story, a heritage, a map back to ourselves. And the rituals, how we greet, bury, discipline, gather, coded with care. Even in chaos, we carried order. Even in loss, we preserved love.",
+    "Why Culture Is the Battlefield",
+    "Identity is not only what you call yourself. It\u2019s what you practise, repeat, and pass down. Dilute a people\u2019s culture and you can erase their identity; make them ashamed of it and you own their future. That\u2019s why this fight was never only about land, votes, or jobs. It\u2019s about language, sound, memory. We protect our culture because it is our power source, our resistance rituals. If we don\u2019t safeguard them, we become echoes in a land we built.",
+    "You may not realise it, but everything we passed down, from \u201cjou ma se kind\u201d to the old-school songs we hum while sweeping the yard, was deliberate. It was survival code. You\u2019re not just inheriting habits. You\u2019re inheriting a civilisation, shaped under fire. Now it\u2019s your turn: to protect it, to remix it, to let it evolve without letting it disappear.",
+    "Chapter 9: The Youth Fire, When the Next Generation Stops Waiting",
+    "We thought we were preparing the path for them. The truth is, they are clearing the path for us. The youth did not wait for our permission. They stopped waiting, full stop. They watched our speeches, listened to our stories, respected our wounds, and also saw where we fell asleep, where we got scared, where we settled. And they decided: no more.",
+    "Our Children Are Not Confused, They\u2019re Awake",
+    "They are the first generation born without the formal chains of apartheid, but they feel its aftershocks in their bones. Raised in broken communities, they saw beauty where we only saw loss. Surrounded by drugs, poverty, and daily violence, they still dreamed like kings. Above all, they see clearly, how race still divides, how education is rigged, how the ANC feeds Black power while the DA trades in white comfort, how Coloured people are framed as inconvenient, unpredictable, expendable. And they\u2019re done waiting for change.",
+    "Where We Failed Them",
+    "Let\u2019s be honest. We tried to protect them and passed down our fears instead. We told them to stay quiet, be grateful, fit in. We taught survival, not always self-worth, so focused on being accepted that we forgot to teach them how to lead. We didn\u2019t give them a system that worked. We gave them one that survived. Now they are angry, not disrespectfully, righteously, because they know they are more than \u201calmost-white,\u201d more than \u201cColoured-in,\u201d more than \u201calso South African.\u201d They are ready to define themselves on their own terms.",
+    "Youth Is Not the Future. It\u2019s Now.",
+    "They are not asking for leadership. They are leadership, young writers redefining identity, creatives reclaiming Kaaps in poetry, film, and theatre, activists building movements on TikTok and in WhatsApp groups. They\u2019ve gone from asking, to demanding, to building. Their politics is less patient, less polite, more intersectional, more informed. They understand identity is also about power, resources, representation, and truth, and that nobody is coming to save them. They are already saving themselves.",
+    "Not a New Generation, A Next Generation",
+    "They are not rejecting us. They are upgrading us, the next link in the chain, not a break from it. We must be honest enough to step aside when needed, wise enough to walk with them when invited. We didn\u2019t fail them entirely; we gave them enough to see through the lies, and they will turn that into fire. Let us bless it. Let us add fuel. Let us trust their instincts and defend their vision. They are not here to be symbols. They are here to be sovereign.",
+    "Chapter 10: The New Politics, Redefining Power, Reclaiming Policy",
+    "We can no longer beg to be seen. We must govern to be felt. Coloured people have done enough clapping, enough voting, enough waiting. It is time to write the policies, lead the parties, and set the rules.",
+    "Why Identity Must Be Political",
+    "Culture without power is decoration. History without power is nostalgia. Pain without power is performance. We need policy, not just poetry; budgets, not just slogans; legislation, not just liberation songs. Schools that reflect us, clinics that serve us, streets that protect us. What does justice look like for us? What does fair representation look like in parliament? What does land and housing redress look like in areas long written off? What does an education policy look like that speaks to our children\u2019s languages, cultures, and histories? This isn\u2019t theory. It\u2019s survival.",
+    "Leadership Is Not Clean, It\u2019s Courageous",
+    "We\u2019ve been taught to wait for perfect leaders. We don\u2019t need saints. We need soldiers. Leadership isn\u2019t about being liked, it\u2019s about being loyal to your people. We must stop expecting permission to lead and take it, together. No more watered-down candidates approved by white sponsors. No more Coloured representatives fronting Black agendas. We need leadership rooted in our lived reality, not in someone else\u2019s talking points, and we must be ready to disagree, debate, and grow without tearing each other down. Unity does not mean silence. It means direction.",
+    "Evolutionary Politics, A New Human Model",
+    "We are not just political actors. We are the genetic evidence of what the world has become, and our political power should reflect that role: a bridge between races, a warning about identity manipulation, a possibility of coexistence beyond blood purity. We are not the leftovers of history. We are the prototypes of its next phase. So our politics cannot imitate theirs. It must become something new, a politics of integration without erasure, of memory and forward motion, that says: we are not here to fit in. We are here to set the terms.",
+    "The Liberation Path, We Must Commit",
+    "It will cost us, some comfort, some friends, some illusions. But it will give us back our name. Not \u2018Coloured\u2019 in their sense. Coloured in ours: a convergence of histories, a natural evolution, a new way of being human. This is not just politics. This is prophecy. And we, finally, are ready to lead it.",
+    "Chapter 11: Reclaiming the Coloured Mind, From Psychological Oppression to Mental Sovereignty",
+    "Standing on the Battlefield",
+    "Before we talk about the mind, we need to talk about the war it has been fighting without ever being told there was one.",
+    "There is a war for this country that never ended, it only changed uniforms. A white conservative force, no longer wearing khaki, still organised, still funded, still intent on holding onto white political and economic power, and calling the holding of it \u201cstability\u201d and \u201cstandards.\u201d And an equally determined black nationalist and tribal force, intent on establishing black political and economic dominance, and calling that ambition \u201ctransformation\u201d and \u201cmajority rule.\u201d Both sides believe they are owed the win. That is not the lie we are here to name.",
+    "The lie is what this war does to the people standing in the middle of it, who were never issued a uniform. That is us. We are not bystanders to this war. We are the ground it gets fought on. Every election, we are the vote both sides need and neither side serves. Every policy, we are too \u201cadvantaged\u201d for one side\u2019s redress and too \u201cother\u201d for the other side\u2019s protection.",
+    "You cannot heal a mind that does not know it has been standing on a battlefield its whole life, mistaking the crossfire for its own war. So before we talk about mental sovereignty, we start here: know which war is yours, and which one you were only standing in the middle of.",
+    "Before we lost our land, before we lost our voice, before we were removed from power, we lost our minds. Not to madness, but to a long, patient psychological colonisation. Colonialism conquered our bodies. Apartheid erased our place. Democracy repackaged our invisibility in the language of \u201cinclusion.\u201d And today, most of us don\u2019t even know we\u2019ve been at war. That\u2019s the scariest part.",
+    "Why We Are Considered Politically Naive",
+    "Coloured people in South Africa are often regarded as politically unconscious. Not because we\u2019re stupid, because we were deliberately miseducated: taught other people\u2019s history, told ours didn\u2019t matter, used to serve the system rather than shape it. Many of us still live in a comfortable coma, confusing a good job with freedom, business with ownership, a vote with a voice, not seeing how our ambition has been redirected and our loyalty managed. If we did, we\u2019d understand that our own identity was turned against us.",
+    "The Disaster of Our Current Identity",
+    "Let\u2019s be honest: the \u201cColoured identity\u201d most of us live today is a disaster, not because we were born wrong, but because we were conditioned to self-destruct. We defend parties that never defended us. We glorify lifestyles that destroy our families. We uphold gossip, competition, jealousy, and shame, and call it \u201cjust how we are.\u201d We\u2019ve turned trauma into tradition, mistaken pain for personality, and passed the confusion down proudly. We laugh at ourselves before others can, minimise our dreams before life does, shrink our sense of belonging before anyone can push us out, and then wonder why we feel invisible. This identity was never built to liberate us. It was built to keep us in our place.",
+    "The Illusion of Progress",
+    "You might say: I earn well, I run a business, my kids are in private school. Fair, but you\u2019re still paying more in taxes than your kids will ever see back in services, still building someone else\u2019s system, still living where your skin limits your ceiling. Without cultural power, without policy voice, without narrative control, money is just silence with a bank card. You\u2019re not thriving. You\u2019re performing in someone else\u2019s play, and your kids are growing up thinking that\u2019s normal.",
+    "Naming the Condition",
+    "This is not low self-esteem. It is a national condition. We inherited silence as a virtue, obedience as a strategy, shame as a personality trait. We were told, \u201cYou don\u2019t belong fully anywhere, be grateful for the scraps.\u201d And so we keep trying to fit into places never designed for us, speaking other people\u2019s languages, fighting other people\u2019s wars, voting for parties that don\u2019t mention us by name.",
+    "Mental Sovereignty",
+    "Before we take up arms, before we write new laws, we must first take back our minds. From \u201cwe are broken\u201d to \u201cwe are forged.\u201d From \u201cwe are in between\u201d to \u201cwe are the convergence.\u201d From \u201cwe are leftovers\u201d to \u201cwe are the next phase of human evolution.\u201d Mental sovereignty is not optional. It is the foundation of every other freedom: cultural, economic, political, communal. Until we fix how we see ourselves, nothing else stays fixed.",
+    "Inside our collective mind lives the memory of survival, the intuition of adaptation, the fusion of many worlds, the rhythm of resistance. We are a genetic library, carrying the memory of catastrophe and the code for reinvention, but until we activate that knowledge, we\u2019ll keep mistaking our gift for a curse. We must reclaim our language, own our aesthetics, archive our pain, celebrate our contribution, not for nostalgia, but for the survival of our future.",
+    "From Internalized Shame to Evolutionary Pride",
+    "We are not a tragedy. We are a transformation. We didn\u2019t just survive apartheid, we evolved through it. We didn\u2019t just mix, we converged. We didn\u2019t just adapt, we reshaped what being human could mean. This is the natural evolution theory: Coloured people are not an accident. We are the genetic result of colonial impact, and potentially the blueprint for future humanity, if we choose to see ourselves that way, and live accordingly.",
+    "Our liberation is not a policy away, not a politician away, not a prayer away. It starts in the mind of every parent who tells their child they are enough, in the voice of every young thinker who names their condition, in the courage of every leader who puts Coloured needs first, without shame. This is our war cry. Our therapy. Our blueprint. And it begins with truth.",
+    "Chapter 12: Cultural Warfare, From Stolen Expression to Strategic Reclamation",
+    "They didn\u2019t just steal our land. They didn\u2019t just break our families. They stole our sound, our style, our swag, our language, our spirit, and sold it back to us wrapped in shame, or repackaged under someone else\u2019s brand. We weren\u2019t just politically erased. We were culturally plundered. And the worst part is, we bought our own culture back, broken and commercialised, and called it progress.",
+    "The First Target of Any Colonizer Is Culture",
+    "Colonialism didn\u2019t start with guns. It started with translation: new names for old ones, Bibles we couldn\u2019t read for beliefs we already had, \u201csavage\u201d for ritual, \u201centertainment\u201d for creativity, always for them. Every act of control began as a war on expression, because a people who lose their language, food, dance, dress, rhythm, and gods lose themselves without ever bleeding.",
+    "Hijacked, Not Destroyed",
+    "We\u2019re told our culture is dangerous, the klopse \u201cnoisy,\u201d our taal \u201cbroken,\u201d our music \u201cjust Coloured vibes,\u201d our humour \u201ctoo raw,\u201d our mannerisms \u201cunprofessional.\u201d So we dim ourselves to fit in, clean up our tongue, hide our slang, conform our art, bleach our brilliance, while others take our essence, our sound, our look, our street flavour, repackage it, and make billions. Our culture isn\u2019t extinct. It has been gentrified.",
+    "Cultural Confusion: The Real Weapon",
+    "Our youth now wear the uniform of every struggle except their own, imitating American rappers, European influences, and fake local politicians, not because they\u2019re lost, but because we stopped showing them what was ours. We told them being Coloured was embarrassing, so they searched for pride elsewhere. We told them their slang wasn\u2019t proper, so they built personalities in foreign accents. We told them real music was English or gospel, so they abandoned the ghoema beat pulsing through their ancestors\u2019 bones. We are raising a generation more comfortable in borrowed skins than their own. That is cultural warfare, and right now, we\u2019re losing.",
+    "Culture Is a Weapon, Not an Add-On",
+    "Culture creates unity, holds memory, transmits values, generates pride, protects dignity. Held onto, it becomes a psychological shield against drugs, self-hate, gangsterism, hopelessness. Without it, we became vulnerable to every ideology and every addiction on offer. We became easy to control.",
+    "What We Must Reclaim",
+    "Our language, Kaaps is not broken Afrikaans. It is the linguistic birthmark of the Cape: poetic, political, playful, a record of fusion, humour, and resilience. Our music, from ghoema to goema jazz, from klopse to klank, the echo of slaves who refused silence and a generation who played joy into oppression. Our humour, satirical, sharp, self-aware; our comedians are political analysts in disguise, our wit trauma turned into power. Our dance, bodies that remember what textbooks forget, choreography that tells our history with every shuffle. Our aesthetics, patterns, eras, street and soul mixed together, always ahead of its time because it was never trying to fit one.",
+    "From Cultural Shame to Cultural Strategy",
+    "The shift has to start here: from \u201cja, jy weet mos, we Coloureds is just like that\u201d to \u201cthis is our language, our rhythm, our story, and you\u2019re welcome to witness it, not own it.\u201d From hiding our roots to seem respectable, to wearing our identity like armour, with pride and purpose. Our culture is not the reason we are behind. It is the only reason we are still here.",
+    "Innovation, Not Nostalgia",
+    "We don\u2019t need to go back to culture. We need to evolve it forward. Urban artists should reclaim our colours instead of mimicking global trends. Schools should teach our language alongside maths. Local food should be rebranded, elevated, owned, not just sold in backyards. Artists should stop waiting for state funding and start building their own cultural economies. We are not a subculture. We are a source culture, and it\u2019s time the world knew it.",
+    "If we win every political argument and still lose our soul, we\u2019ve lost the war. Cultural liberation is the true front line, because that\u2019s where the attack started. Reclaiming it means healing the mind, uniting the people, honouring the past, and building a future that\u2019s ours, not nostalgia, nation-building. Every song, every story, every slang, every stitch is a brick in the house we are rebuilding.",
+    "Chapter 13: Economic Colonisation, How Coloured Labour Built the Nation But Was Never Allowed to Own It",
+    "We laid the bricks, but never owned the houses. We picked the fruit, but never owned the farms. We sewed the uniforms, but never wore the power. We filled the factories, the kitchens, the construction lines, and were kept from the boardrooms, the contracts, the capital. Coloured people didn\u2019t just watch South Africa being built. We built it. And then they told us: you weren\u2019t there.",
+    "The Silent Workers of Empire",
+    "From the docks of Cape Town to the vineyards of Stellenbosch, from the railways to the weapons factories of apartheid, we were the workers beneath every economic engine. Unlike Black workers, who became political symbols, and unlike white workers, who became managers, Coloureds were rendered invisible, the standby crew, always ready, never recognised.",
+    "Excluded by Design, Not Default",
+    "This exclusion was never accidental. Under apartheid we were used to buffer Black advancement and white fear, allowed just enough (a house in a township, a job in a factory) but never ownership, never leverage. After 1994, the ANC\u2019s empowerment agenda largely ignored us unless we could deliver numbers rather than needs; we weren\u2019t \u201cpreviously disadvantaged\u201d enough, and when we said so, we were called bitter. In the DA\u2019s Western Cape, we became figures on a spreadsheet, placated with pothole repairs while the suburbs gentrified and our communities got cameras instead of capital. Economic exclusion wasn\u2019t only historical. It was strategic.",
+    "The Illusion of Inclusion",
+    "They gave us loans we couldn\u2019t repay, training programmes with no real placement, jobs that meant nothing in five years. They let us register businesses and then blocked our tenders. They told us to work harder while making sure we never climbed higher. We were taught to be proud of making something out of nothing, and forgot to ask who made the nothing.",
+    "The Cost of Surviving Without Power",
+    "We became masters of the hustle, backyard garages, kitchen-run salons, spaza shops. But survival is not freedom. Without land, you can\u2019t leverage wealth. Without industry, your labour stays undervalued. When your contracts depend on who you vote for, you\u2019re not free. You\u2019re rented. Our people have always worked. The problem is that our work has always enriched someone else.",
+    "Black Capitalism, White Capitalism, and Coloured Nothingness",
+    "White monopoly capital was never dismantled. It rebranded. Black economic empowerment was never truly inclusive. It replaced a few faces. Coloured people, again, became the labour force without stock options, the small businesses without protection, the voters without reward, the taxpayers without benefit, too oppressed to own, too silenced to strike, too divided to organise.",
+    "Caught Between Two Appetites",
+    "Look at what this chapter has just laid out and you will see the shape of the truth underneath it: this was never a fight between us and one side. It was always a fight between two sides, each with a real appetite for power, and us standing in the only ground both of them needed. A white conservative force protecting the wealth it already holds. A black nationalist force building the dominance it was long denied. Both legitimate ambitions, in their own right, for the people chasing them. Neither one built with us in mind.",
+    "We were not collateral damage in that fight. We were the currency. Our labour built the province one side now governs. Our votes stabilise the numbers the other side needs to claim a majority. We are spent by both, saved by neither. That is the economic colonisation this chapter is named for, not an accident of two systems failing to notice us, but two systems that noticed us precisely enough to use us, and not once enough to include us.",
+    "Reclaiming Economic Sovereignty: A Blueprint",
+    "Coloured liberation must be economic, not only political or cultural. We don\u2019t want favours. We want power. That means land ownership, for housing and business, not only farms. Capital access, real partnerships, not loans with interest that strangle us. Procurement justice, BEE recalibrated to reflect historical truth rather than electoral maps. Business cooperatives, entrepreneurs building networks and alliances instead of working in silos. And ownership education, teaching our children not just how to work, but how to own.",
+    "We must stop believing \u201cwe\u2019re just not business people,\u201d \u201cwe don\u2019t trust our own,\u201d \u201cat least we have jobs,\u201d \u201cthat\u2019s just how it is.\u201d The Chinese did it. Afrikaners did it. Indians did it. We can too, but only once we unlearn those lies and start reprogramming our economic DNA. Until we own our own land, capital, and systems, our children inherit our survival. Not our sovereignty.",
+    "Chapter 14: Political Betrayal, Why Both the ANC and DA Sold Us Out",
+    "They used our votes. They exploited our silence. They studied our pain. And then they pocketed our loyalty and put us back in the line. The truth is harsh, but we have to face it: both the ANC and the DA betrayed Coloured people, in different ways, for the same reason. Power.",
+    "The ANC\u2019s Bargain: Freedom for Black Votes, Silence for Coloureds",
+    "After 1994, we stood in line like everyone else. Some of us cried. Some of us hoped. Most of us said, let\u2019s give them a chance. But the ANC made one thing clear: they were here for the Black majority, and Coloureds were an afterthought, a demographic inconvenience. We were told, \u201cyou had it better under apartheid,\u201d dismissive and dangerous, erasing our struggle, our deaths, our resistance. It told us our pain was disqualified. For thirty years the ANC built policies that excluded us from empowerment, narratives that othered us in the media, cabinets that ignored us except when convenient. They kept us in poverty, then blamed us for being poor. They let drugs hollow out our youth through neglect, then criminalised them when they rebelled. And when we spoke up, we were called ungrateful, House Coloureds, apartheid\u2019s leftovers.",
+    "The DA\u2019s Deal: A Party of Two Sides",
+    "To understand the DA\u2019s sin against Coloured people, you have to understand that the party is a coin with two sides. One side is Coloured. It is the Coloured vote that makes the DA the official opposition. It is the Coloured vote that hands it governing control over the Western Cape. Without us, the DA is a minor party talking to an empty room. We are not a footnote in that party. We are its foundation.",
+    "The other side of that coin is a minority white leadership that was never elected to represent us so much as it was positioned to manage us. That leadership decides the policy. It sets the tone. It chooses which Western ideologies get imported, which imperialist economic logic gets protected, which version of \u201cgood governance\u201d gets marketed to the world. Coloured people supply the votes and the labour. White leadership supplies the direction, and keeps the profits.",
+    "So when the DA hired Coloured mayors with no real power, put up streetlights and fixed potholes while, behind the scenes, gentrifying our neighbourhoods, blocking real land reform, ignoring youth unemployment, and investing in policing over rehabilitation, that was not an accident of bad management. That was the coin working exactly as designed. We were told we were partners in the \u201cgood province.\u201d We were only ever passengers, supplying the fuel, never allowed near the wheel.",
+    "A Word From the Author: Why I See Race",
+    "Some readers will read this chapter and think my plight for Coloured people to become more conscious is itself a form of racism. I want to answer that directly, in my own voice.",
+    "Racism is a reality that still drives modern-day political agendas, much as it has for decades and centuries before. Imperialism, the white supremacy doctrine, and the wider Western political system, its ideologies, its paradigms, its agendas, are still built around it. I am not trying, or even attempting, not to \u201csee race in everything.\u201d This is not some disorder. It is deliberate. It is intentional. It is my purpose. It is my mission. This is the core of my Coloured consciousness campaign.",
+    "Just like Helen Zille, her mayor, JP Smith, and the whole white side of the DA coin run an obvious campaign to protect and safeguard white interests and their way of life, and to survive under what they frame as black domination, I see race because the white leadership in the DA has made race their strategy. Without shame, they have hijacked the Coloured mandate and our voting power, reducing us to membership statistics, while continuously questioning our capabilities. They speak of our so-called \u201cracial inabilities,\u201d as if that justifies their dominance.",
+    "I see race because I am part of the Coloured identity\u2019s racial crisis, one with roots far deeper than gangsterism and drugs. The issues facing the Coloured and Khoisan people are not self-made. They are historical, systemic, and deeply racialised. We have been victims of undignified stereotypes, seen as cognitively unfit to lead, prone to violence, and treated with quiet contempt.",
+    "As long as a DA mayor carries on with clownish gimmicks, painting over poverty with pastel colours in under-serviced communities and baking samosas with Coloured aunties, while children the same age as him grind away in underpaid jobs that don\u2019t come close to his salary and his privilege, I will remain in a world of reality that no status of liberalism can make believe isn\u2019t real, should be ignored, or should be excused. Not because of envy. Because I know what they are doing. My obsession is not accidental. It is rooted in knowledge.",
+    "There are far too many among us who are so obsessed with becoming liberal, while belonging to an identity that has not yet reached liberation, who still pretend to be \u201cjust South African,\u201d or \u201cjust human,\u201d and who refuse to see themselves as Coloured, despite the fact that everything about our lives, legally and socially, is defined, stereotyped, and deprived, because we are Coloured.",
+    "Too many of us are politically sharp but historically blind, too proud to admit that the dysfunction in our Coloured communities, and the rot in government, is not simply a result of Black incompetence, but a continuation of chaos engineered long ago. We used to fight those origins. Now we pretend they don\u2019t still exist.",
+    "You speak politics like someone who jumped into the middle of a story, never knowing how it started. You crave being seen as liberal, and fear being called racist, so much so that even when you witness racism, you whisper about it, as if you were the criminal instead of the victim.",
+    "And after all of that, after all the status-chasing, the business breaks from white friends, the houses in Constantia and Bishopscourt, the international business trips, the career promotions, the rise as IT moguls, not one of you has built generational wealth. Not one of you owns land en masse. Not one of you holds capital power, rooted in ownership and legacy. Not a single one.",
+    "So no, don\u2019t come and tell me to tone it down. I see race, because it still decides who eats, who starves, who leads, and who follows.",
+    "Why There Is Everything Wrong, Yet Not a Single Thing Wrong, About a Coloured Person Voting DA",
+    "Read this section carefully before you decide what I\u2019m saying. If, once you\u2019ve read it, your honest summary is that I believe it is a normal, natural, unashamed thing for a Coloured person to vote DA, even knowing full well that Coloured development and empowerment is not that party\u2019s priority, then yes, that is exactly what I\u2019m saying. Not because the DA deserves that vote. Because of what that vote actually represents, and what it exposes.",
+    "Here is the political fact, plain and checkable, that this argument rests on. The DA was built from a merger: the old Democratic Party, largely English-speaking white liberals, the remnants of the National Party, and the Independent Democrats, whose base was overwhelmingly Coloured. From that merger onward, Coloured and Khoisan voters have made up the DA\u2019s largest racial constituency by number, exceeding the white liberal base that founded it. The Western Cape, the DA\u2019s flagship province, the one it points to as proof of good governance, is governed on the back of that Coloured vote and staffed, at the administrative level, overwhelmingly by Coloured hands. When the DA is praised for running the best-administered province in the country, that praise is describing Coloured competence. It is simply being collected by someone else.",
+    "So here is the wrong, and it has nothing to do with the act of voting. The wrong is that this reality goes unclaimed. We deliver the numbers, the loyalty, and the administrative discipline that makes the party functional, and in return we get a handful of Coloured faces on posters while a minority white leadership keeps the policy pen, decides which Western ideologies get imported, and is credited, in the public imagination, with a competence that is not actually theirs to claim. That image, English fluency, tailored suits, a certain performance of \u201cgreat leadership,\u201d is doing a lot of work to obscure who is actually carrying the party. That is the delusion. Not the vote. The theft of credit for what the vote has already proven.",
+    "And here is the part not a single thing is wrong with: the ambition underneath it. There is nothing shameful about wanting power, wanting a well-run place to live, wanting stability, wanting to be part of something that actually governs competently. We have already proven, inside this very party, that we can do all of that at scale. The DA\u2019s success is, in truth, one of the largest demonstrations of Coloured political unity and administrative capability this country has ever produced. We keep telling each other we lack the ability to unite, to organise, to govern. We are the evidence against our own doubt, we simply built someone else\u2019s legacy while doing it.",
+    "So an ordinary Coloured voter who votes DA, clear-eyed about all of this, is not betraying anyone. They are recognising, whether they say it in these terms or not, where the competence in that party actually sits. The betrayal is something narrower, and it belongs to a different group of people: Coloured political leaders who leave genuine, grassroots Coloured movements to join the DA without ever grounding themselves in the actual political science of what they\u2019re walking into, without a plan to convert our proven numerical and administrative power into policy we actually hold. That is not ambition. That is trading resistance for the illusion of progress.",
+    "A Letter to a Young Politician",
+    "I have always been a sucker for young people with real passion for politics, young leaders with ability, ambition, and the will to change things. I remember one such young man, and how, despite his youth, he carried the spirit of someone who wanted to be part of a genuine Coloured initiative, a movement built to politically mobilise around our people\u2019s dilemmas and injustices. I saw how he positioned himself alongside serious Coloured activists, ready to confront the exact worries trapping our communities, our children, our politics, our reputation, our identity, our integrity.",
+    "Then he joined the DA, and posted a photograph of a park the city\u2019s tractors had just cleaned, presented as proof of how tireless the DA works for the people. Let me tell him what I see as good in that choice, and why, at the same time, it disappointed those of us who have spent years in this fight.",
+    "The good is that the choice proves something real: a healthy political ambition, a hunger for power, for a vehicle to carry a cause, for people equally committed to stand beside him. That hunger is genuine. Only someone who still remembers what dignity in our communities used to look like would feel proud enough to post a photograph like that one.",
+    "The bad is where too many of our political spirits fall, and where every Coloured politician\u2019s migration to the DA has changed nothing. Too many of us step into politics knowing the wounds but never grounding ourselves in the systems, ideologies, and history that actually shape this world. Without that grounding, the fight cannot be equal. Without it, politics becomes performance, not resistance. The world\u2019s political systems are not neutral. They are built to manage and weaken exactly the communities most people in them come from. Without understanding that as a science, you end up trapped inside the very system you believe you are changing.",
+    "So the choice to join the DA, his and every more senior politician\u2019s before him, became a betrayal, not because ambition is wrong, but because it exchanged genuine politics for the illusion of progress. He stood in a place where he could have helped build resistance, and instead stepped into a party whose policies he already knew have long worked against our communities\u2019 dignity and survival.",
+    "I can say without fear: there is no better choice of party for Coloured people to join or vote for than the DA, not because it deserves us, but because we are already, in numbers and in competence, its foundation. I say this with the political education and the facts to defend it, facts that, properly understood, are the strongest argument there is, not for loyalty to that party, but for finally claiming, consciously, what we have already built inside it.",
+    "Why It Worked",
+    "Both parties relied on divide and rule. The ANC said: you\u2019re not Black enough. The DA said: at least we\u2019re not the ANC. So we voted out of fear, not vision. We stayed loyal to parties that weren\u2019t loyal to us. We celebrated being tolerated. And our reward was townships that became war zones, schools stripped of real funding, youth without purpose stuck in trauma, and leaders who became tokens or traitors.",
+    "Our Own Silence",
+    "This part hurts, but it has to be said: we allowed it. We let gang bosses speak louder than teachers, pastors preach silence instead of justice, ward councillors buy us with food parcels, artists entertain instead of educate, elders tell us to \u201cjust be grateful.\u201d We sold our vote for peace. We traded our pain for permission. We chose loyalty over liberation. That ends now.",
+    "The Blueprint for Political Reclamation",
+    "We don\u2019t need more parties. We need purpose. Narrative control, stop waiting for the media to tell our story; write it, film it, teach it. Youth activation, train our young people in leadership, media, policy, and technology, so they become the narrators, not the next victims. Local government takeover, target municipal and ward elections, build independent slates of credible community organisers instead of careerists, and end DA/ANC domination by default. National alliance building, form a Coloured bloc across the country, not to isolate ourselves but to negotiate power, because politics is numbers and leverage, not loyalty. Civic intelligence, run political education forums that prepare rather than just protest, teaching the constitution, budget laws, and public access rights. Knowledge is power, and we\u2019ve been deliberately undereducated.",
+    "The Final Line in the Sand",
+    "If we do not claim our power now, the next generation will curse us for our cowardice. We don\u2019t need permission to lead. We need conviction. We don\u2019t need pity. We need pride. And we don\u2019t need a better party. We need a political rebirth.",
+    "Chapter 15: How We Lost Our Soul and How We Rebuild It, Identity Through Art, Memory, and Storytelling",
+    "They didn\u2019t just take our land. They didn\u2019t just rob our economy. They stole something deeper, our mirror. They made us forget what we looked like, what we sounded like, what we cooked, danced, prayed, painted, believed, built. They bombed our culture in silence, not with warplanes but with erasure. And now we stand in the ruins of a Coloured identity we didn\u2019t author, only inherited: broken, blamed, unfinished. But we will finish it now.",
+    "The Silent Cultural Genocide",
+    "Under apartheid, they labelled us \u201cColoured\u201d, a name without history, without language, without honour, a box for neither Black nor White, a convenience for categorisation. So our grandparents made do: made music with pain, danced in defiance, told stories in secret, survived loud and shameful and proud. Under the new regime, something changed. We weren\u2019t just oppressed, we were forgotten. Our art wasn\u2019t funded. Our museums weren\u2019t built. Our dialects weren\u2019t respected. Our heroes weren\u2019t taught. We became entertainment, not educators. They loved our slang but not our science, cheered our comedy but ignored our politics, played our songs but silenced our stories. That\u2019s not a culture. It\u2019s a cage.",
+    "Cultural Amnesia Is Designed to Keep You Powerless",
+    "If you don\u2019t know who you are, you\u2019ll believe anything about yourself. And what did they tell us, that we\u2019re gangsters by nature, alcoholics by tradition, good for labour but not leadership, angry because we\u2019re broken? That story was embedded in textbooks, sitcoms, political speeches, police reports, church sermons. We were programmed to hate our own reflection. Our daughters stopped wearing their natural curls. Our sons performed toughness to survive. They told us we had no culture, and we believed it.",
+    "But We Do Have a Culture. We Just Haven\u2019t Owned It.",
+    "Our culture is not in museums. It\u2019s alive, in the way we mix languages like jazz riffs, the way we walk into rooms like they\u2019re stages, the food that holds five histories on one plate, the humour that cuts like a blade and heals like balm, the stories that begin with \u201cjy weet mos\u201d and end in wisdom. We descend from Khoisan bloodlines, Malay resistance, slave revolutions, European rebellions, African survival, Cape Town rhythm, global mutation. We are cultural alchemists, we take broken things and make them beautiful. But only if we own it.",
+    "Rebuilding Is Strategic, Not Cosmetic",
+    "Culture isn\u2019t soft power. It is the foundation of all power. You can\u2019t build politics without identity, economics without dignity, or raise children without stories. Culture is not decoration. It\u2019s declaration. So we rebuild it like this: retell our origins, teach our kids that we are not the product of rape and apartheid, but the survivors of it, a new synthesis of race, resilience, and renewal. Fund our artists, stop waiting for government, start community art trusts, storytelling circles, youth theatres; turn our elders into archives, our dancers into diplomats, our poets into policymakers. Protect our language, formalise Kaaps, our slang, our hybrid tones; write it, teach it, publish it, so our children hear their truth in the classroom, not just the playground. Claim our memory, build local museums, digitise our family stories, document our rebellions, celebrate the struggle of our own parents, not only Mandela\u2019s.",
+    "From Pain to Pride",
+    "Coloured youth are not just addicted to drugs. They are addicted to self-erasure, because pain with no story becomes poison. Culture is the antidote. When a child sees themselves as the protagonist, they act differently. When a father hears his music respected, he walks differently. When a community reads its own truth in books, it rises differently.",
+    "Culture Is the Soul of Liberation",
+    "We will not beg for recognition. We will not wait for permission. We are the storytellers now, because whoever controls the story controls the future, and we are done being background characters in someone else\u2019s version of South Africa.",
+    "Chapter 16: The Collective Coloured Consciousness",
+    "Without a shared awareness of who we are, what we have survived, and what we are still owed, unity is a word without a foundation. This chapter is about that foundation: becoming Coloured conscious, redefining and retelling our own narrative of who we are, where we come from, and why we need to be respected, as a new breed of Southern African Natives, as South Africans, as Africans, and not as non-humans, not as people without culture, but as human beings in full.",
+    "Unity chased for political might alone is not unity. In reality it is a domination strategy dressed up as a righteous means to gain power. Real unity does not start with a vote or a party. It starts with consciousness. And consciousness is what ends, eventually, in power.",
+    "Defined by Everyone but Ourselves",
+    "Who we are as people of mixed origin, as Coloured people, what we are, what we are capable of, and how we see and relate to each other, has historically always been shaped, manipulated, and controlled by those who felt entitled to define us.",
+    "For generations, outsiders have labelled us, boxed us in, and imposed their versions of our identity onto us. Black South Africans have often viewed Coloured people as too genetically mixed, too culturally fragmented, to be worthy of traditional or indigenous belonging. White South Africans, on the other hand, have taken full advantage of our loyalty, our spiritual devotion, and the insecurities passed down from generations of survival, using our silence and our service to reinforce their privilege.",
+    "This is why our Collective Coloured Consciousness has been so corroded, stifled, and stereotypically defined by everyone in our history, except us.",
+    "Becoming politically conscious and self-aware is how we reclaim the right to define ourselves, trust ourselves, and liberate ourselves from the grip of labels imposed by others. We must become resistant, and no longer allow anyone, Black or White, to tell us who we are.",
+    "When Silence Becomes Betrayal",
+    "There comes a time when silence, ignorance, and plain denial become betrayal, and for Coloured people in South Africa, that time is long overdue.",
+    "The truth is, many of us have gone beyond just betraying ourselves. We have betrayed the children of our people, who carry our identities while sitting unemployed, filling our prisons, carrying our reputations. We have convinced ourselves we are doing fine, that we are progressing, in our jobs, our careers, our small businesses, our suburban homes. But those illusions of progress have blinded us to a deeper truth: we have gone nowhere, just as slowly as the children stuck in our forgotten, dysfunctional Coloured communities.",
+    "All of us, no matter how rich, educated, or socially affluent, our lives still reflect the harsh reality we refuse to face. We have failed to build structures to protect our own. We have failed to create alternatives. We have failed to see that individual success can mask a collective decline. Go and search for it yourself: there is no list of generationally wealthy Coloured families. Not because we lack potential, but because we have stagnated, locked out of systems designed to keep others on top, and us dependent, divided, and distracted.",
+    "Protect Your Own, Fund Your Own, Defend Your Own",
+    "This is also why we do not have institutions like Solidarity or AfriForum, welfare and legal machines built by and for white communities, funded by wealthy white business networks who understand one thing we have yet to master: protect your own, fund your own, defend your own. Until we adopt that mindset, grounded in a Collective Coloured Consciousness, we will keep mistaking survival for progress, and individual success for collective liberation.",
+    "We are the nation-builders who have kept believing, even while this country\u2019s political and economic systems have been captured, controlled, and dominated by both white and black elites. And while they fight each other for power, we are still fighting for recognition, for dignity, for space to exist fully.",
+    "Let\u2019s Make It Plain",
+    "The DA protects white power. It does not matter how many Coloured faces they put on posters. The party\u2019s core remains a safehouse for white privilege, where policy, money, and real influence stay locked in the hands of white executives. Here in the Western Cape, where Coloured people are the majority, and our voting power has won a province, we are not the decision-makers. We are the workers, the voters, the front, but never the core.",
+    "The ANC protects black dominance. Coloured people are deliberately excluded from economic opportunities, policy benefits, and cultural recognition. We are denied employment equity. Denied land. Denied a place in the broader liberation story. And when we speak up, we are accused of being racist, ungrateful, or privileged, as if our own oppression were imaginary. Between these two giants, we are politically orphaned, economically trapped, culturally erased.",
+    "Meanwhile, other groups, whether Afrikaners with their Orania, or black elites protected by cadre networks, are given the space to grow their power, their language, their economies. Even foreign nationals are doing better in our own communities than we are. That is not xenophobia. It is a hard truth.",
+    "We remain the only group in South Africa without recorded generational wealth. We may know what millions look like, but not billions, because the structure has never allowed us to rise that far. The ceiling was fixed for us. The system never expected us to lead. Yet despite all this, we still believe. We still vote. We still build. We still forgive. We still hope for a South Africa that includes all of us. But hope without consciousness is a trap.",
+    "Why the Coloured Conscious Must Rise",
+    "That is why the Coloured Conscious must rise, not out of hate, not out of division, but out of a need to survive, to protect our identity, restore our reputation, and take our rightful place in this country\u2019s future. We are not asking for favours. We are demanding what is ours. We are done being politically neutralised and economically sidelined. We are not less sensitive to racism. We have just been taught to tolerate more pain. Now we are teaching ourselves to see clearly, speak boldly, and stand collectively.",
+    "This is why a collective Coloured consciousness is not just timely. It is urgent. We need to see clearly. Speak boldly. Organise unapologetically. Reclaim our place. And stop allowing others to define us or use us.",
+    "Chapter 17: The Covenant, A Closing Word",
+    "This book began as a covenant, not with heaven, but with ourselves. Sixteen chapters later, that covenant is no longer just a phrase. It is a decision.",
+    "We have named what broke us: the silence we were trained into, the shame we were sold, the votes we were harvested for, the culture we were told to hide, the land and labour we built and were never given a share of. But naming it was never the point. The point was always what comes next.",
+    "So let this final chapter stand as the terms of the covenant, plainly stated.",
+    "We will not wait to be defined. We already know what we are: not the leftovers of history, but its convergence. Not confusion, but a bridge. Not a demographic managed by whichever party remembers us every five years, but a people who write our own mandate.",
+    "We will not raise another generation on apology. We will raise them on inheritance, language, music, memory, pride, and the plain fact that they were never a mistake.",
+    "We will not beg for inclusion in economies we built with our own hands. We will build beside what we already have, and this time we will keep what we build.",
+    "We will not outsource our story again, not to a party, not to a pulpit, not to a press that only finds us when we bleed. We are the narrators now.",
+    "We will no longer mistake someone else\u2019s war for our own. Two forces have fought over this country since before we had a name for ourselves, one guarding what it has, one building what it was denied, and for three hundred years we stood on that battlefield believing the crossfire was our fight. It was never ours. Our fight was always to stop being ground that other people\u2019s wars get fought over, and become people who stand on our own.",
+    "This is not the end of The Coloured Bible. It is the beginning of what it was written to start: a generation that does not flinch when it says \u201cI am Coloured,\u201d a people who no longer confuse survival with sovereignty, and a mind that has finally stopped asking for permission.",
+    "We were forged, not formed. We were the evidence, not the accident. And from here, we are the authors.",
+    "The covenant is signed, not in ink, but in how we live from this page forward.",
+    "This is our new beginning. Let it be written.",
+    "The Plan Forward",
+    "Everything before this page named what was done to us. This page names what we must now do.",
+    "A people cannot heal on complaint alone. Diagnosis without a plan is just another kind of paralysis, and we have been paralysed long enough. So here is the plan. Not a suggestion. Not a hope. A mandate.",
+    "The Council of Elders",
+    "We must build a Coloured Council of Elders, not elected for popularity, not appointed by any party, but approached, one by one, because of who they already are: people of proven character, standing, education, and discipline. Teachers who never left their communities. Business owners who built without stepping on others. Retired professionals who never stopped mentoring. Pastors, coaches, aunties, uncles, the people every neighbourhood already quietly trusts. This council does not campaign for power. It carries responsibility. Its mandate is singular: drive the teaching and development culture our children have never been given, and hold every centre, every programme, every promise in this plan accountable to that mission.",
+    "The Council does not invent this mandate from nothing. It inherits the Five Pillars this book named at the start of the journey, back when we first called ourselves a mandate rather than a movement: Identity Reclamation, Mental Liberation, Economic Self-Reliance, Cultural and Political Autonomy, and Inter-generational Continuity. Everything that follows in this plan, the centres, the curriculum, the boerewors stands, the reculturalised table, answers to one of those five pillars. The Council\u2019s job is not to add a sixth. It is to make sure none of the five is ever again left to chance.",
+    "The Centres",
+    "In every poorer Coloured area, a development centre must open its doors the moment the school bell rings, and it must not close before half past five.",
+    "These centres are not for every child. They are, first, for the ones who need them most: children of parents who work but still cannot make ends meet, children of parents who are unemployed and cannot put food on the table, children whose homes are marked by substance abuse, and every child for whom home is not a safe place to simply exist after school. No child should be sent back into a house that is still traumatising them while a better option sits empty three streets away. Until no later than five-thirty, every day, these children have somewhere to be that is not the street and not a house that is hurting them.",
+    "What Must Be Taught",
+    "Inside these centres, our children will be taught what no public school curriculum has ever offered them.",
+    "They will be taught how to navigate interracial relations, how to name racism when it happens to them and respond without losing themselves in the process. They will be taught how to recognise language bullying, the kind that happens in a room where someone assumes a Coloured child cannot understand the language being used to mock them. They will be taught how to recognise stereotype bullying, the assumptions other races carry into every interaction, and how to answer it with clarity instead of shame. And they will be taught, finally, the thing their own schools never gave them: Coloured pride, Coloured culture, Coloured history, practised, not just spoken about. Alongside this, they will be taught, directly and without euphemism, what gang culture costs and what drugs cost, before either one gets the chance to make the offer first.",
+    "This is not extracurricular. This is the curriculum the system never wrote for them. We are writing it now.",
+    "Where the Money Doesn\u2019t Move",
+    "Look honestly at the map, and a hard truth appears: our areas are not economic hubs. Not because our people lack the hustle. Because we lost the culture that turns a community into a marketplace.",
+    "Walk through Gugulethu on any given weekend and you are walking through an economy, not just a neighbourhood. Money moves there, in totals that outpace entire sections of the city centre, faster and heavier than Cape Town CBD or Century City manage in the same weekend. Wallacedene outperforms Brackenfell. Soweto moves more than Joburg itself. These are not wealthy suburbs. They are dense, informal, and relentlessly economically alive, because the culture inside them was never allowed to die: people cook together, sell together, eat in the street together, and every plate sold is a transaction, every transaction a livelihood, every livelihood a thread holding the community\u2019s economy together.",
+    "Now look at ours. In a single weekend, Wallacedene and Bloekombos will move through roughly fifty sheep and fifteen cows in meat trade alone. In the equivalent Coloured area, you will struggle to find a single boerewors stand doing comparable business. Not because we don\u2019t eat. Not because we don\u2019t braai. Because we stopped building the informal economy around our own eating, our own gathering, our own culture, and started outsourcing that spending to Woolworths, Checkers, and Shoprite, where every rand we spend leaves the community the moment it\u2019s spent, and none of it circulates back through a Coloured hand twice.",
+    "This is not a small oversight. This is a missing organ in the body of our economy, and it is one of the reasons poverty in our areas feels so immovable: the money passes through us, it does not move among us.",
+    "Reculturalising the Table",
+    "The plan forward must rebuild this on purpose.",
+    "We need boerewors stands, meat markets, and braai points that belong to us, run by us, feeding us, the same way the meat trade feeds Wallacedene and Bloekombos every single weekend. We need community dinners, not as a nostalgic once-a-year event, but as a standing fixture: streets and courtyards where people eat together on a Friday or a Sunday because that is simply what is done here, the way it is done in every township economy that never let this culture slip. We need our own informal markets, our own street-food economy, our own weekend trade in meat, fish, koeksisters, gatsbys, and every dish that already carries our name, sold by us, to us, first.",
+    "None of this requires permission from government or investment from outside. It requires us deciding that eating together, trading together, and cooking together is not a lesser way of building an economy, it is the way every economy that surrounds us was actually built. We do not need to invent this. We need to reculturalise it, and let the money finally start moving the way it moves everywhere around us.",
+    "From Screens to Streets",
+    "And to everyone who already agrees with every word of this book, scrolling past it in a Facebook group, nodding along in a comment thread: agreement typed into a phone changes nothing on its own. If your convictions match what is written here, this cannot stay a remote friendship between usernames. Find each other. Meet each other. Organise with the people in your own area who believe what you believe, and turn that shared conviction into the council, the centre, the mentor, the volunteer hour this plan actually needs.",
+    "This is not the end of The Coloured Bible. It is the beginning of the work it was written to start.",
+    "Glossary of Terms",
+    "Cultural and Linguistic Terms",
+    "Kaaps \u2014 A creole language spoken primarily in the Western Cape, evolved from Dutch, Malay, Portuguese, Khoisan languages, and English. Often dismissed as \u201cslang,\u201d it is in fact a fully developed linguistic system that carries the history and identity of Coloured people. This book argues for its recognition as a national treasure.",
+    "Klopse \u2014 Also known as the Cape Minstrel Carnival or Tweede Nuwe Jaar (Second New Year), an annual cultural celebration in Cape Town featuring music, dance, and elaborate costumes. Rooted in slave traditions and developed during the apartheid era as an expression of Coloured identity and resistance.",
+    "Ghoema \u2014 A type of drum and the rhythmic music associated with it, central to Coloured cultural expression, particularly in the Klopse carnival. Represents the fusion of African, Asian, and European musical traditions.",
+    "Jou ma se kind \u2014 A Kaaps expression literally meaning \u201cyour mother\u2019s child.\u201d Used in various contexts, from endearment to insult, demonstrating the linguistic complexity and emotional range of Coloured vernacular.",
+    "Jy weet mos \u2014 A common Kaaps phrase meaning \u201cyou know\u201d or \u201cas you know.\u201d Used to establish shared understanding and cultural connection. This book uses the phrase as a metaphor for the unspoken knowledge carried by Coloured people.",
+    "Taal \u2014 Afrikaans word for \u201clanguage.\u201d In the context of this book, often refers specifically to Kaaps or the distinct way Coloured people speak.",
+    "Snoek and patat \u2014 Traditional Cape Town dish combining smoked snoek fish with sweet potato, representing the fusion of indigenous and colonial food traditions.",
+    "Koeksister \u2014 A traditional South African fried dough confection, particularly associated with Cape Malay and Coloured culture.",
+    "Vetkoek \u2014 Deep-fried dough bread, a staple of Coloured cuisine, often served with curried mince.",
+    "Gatsby \u2014 A massive sandwich originating in the Cape Flats, typically filled with chips (fries), meat, and sauce. Symbolises Coloured working-class culture and ingenuity.",
+    "Bredie \u2014 A traditional stew of Malay origin, demonstrating the Asian influence on Coloured cuisine.",
+    "Political and Social Terms",
+    "ANC \u2014 African National Congress. The ruling party in South Africa since 1994. This book critiques the ANC for excluding Coloured people from empowerment policies and dismissing their historical struggles.",
+    "DA \u2014 Democratic Alliance. The main opposition party, particularly strong in the Western Cape. This book critiques the DA for using Coloured faces for political gain while failing to address structural inequality.",
+    "BEE \u2014 Black Economic Empowerment. Government policy designed to redress apartheid economic inequalities. This book argues the policy has excluded Coloured people by focusing narrowly on \u201cBlack African\u201d beneficiaries.",
+    "Cape Flats \u2014 A vast, flat area east of Cape Town\u2019s city centre, established during apartheid as a designated area for Coloured people. Now home to the majority of Cape Town\u2019s Coloured population and the site of significant social challenges including gang violence and poverty.",
+    "District Six \u2014 A former inner-city residential area in Cape Town, home to a vibrant Coloured community until its destruction under the Group Areas Act during apartheid. Its forced removal and demolition became a symbol of apartheid\u2019s brutality.",
+    "Group Areas Act \u2014 Apartheid-era legislation (1950) that designated residential areas by race, forcibly removing Coloured and Black people from desirable locations.",
+    "Khoisan \u2014 Collective term for the Khoikhoi and San peoples, indigenous to Southern Africa. This book emphasises that while the Khoisan are ancestors of Coloured people, they remain distinct nations with their own sovereign histories.",
+    "Khoikhoi \u2014 Indigenous pastoral people of the Cape region, also known historically by the now-derogatory colonial term \u201cHottentot.\u201d One of the ancestral groups of Coloured people.",
+    "San \u2014 Indigenous hunter-gatherer people of Southern Africa, also known historically by the now-pejorative term \u201cBushmen.\u201d Another ancestral group of Coloured people.",
+    "Griqua \u2014 A distinct ethnic group descended from Khoikhoi and European settlers, with their own history and identity. Related to but distinct from Coloured identity.",
+    "Cape Malay \u2014 Descendants of enslaved and free people from Southeast Asia (particularly Indonesia and Malaysia) brought to the Cape by the Dutch East India Company. Their culture significantly influenced Coloured identity, particularly in religion, cuisine, and language.",
+    "Skiem \u2014 Kaaps term for a disadvantaged or neglected area, often used to describe townships neglected by government services.",
+    "Concepts From This Book",
+    "Natural Evolution Theory of Coloured Identity \u2014 This book\u2019s central thesis, that Coloured people represent not a historical accident but a natural evolutionary development: the emergence of a new human synthesis from the collision of races, cultures, and empires.",
+    "Coloured Conscious \u2014 The author\u2019s persona, and the state of awakened awareness he advocates: mental sovereignty and pride in Coloured identity, free from internalised shame.",
+    "Convergence vs.\u00a0Confusion \u2014 A central theme of this book. The argument that Coloured identity represents not confusion about racial belonging but the convergence of multiple lineages into something new and powerful.",
+    "Mental Sovereignty \u2014 The state of psychological liberation from colonial and apartheid programming, achieved through conscious rejection of internalised shame and active reclamation of identity.",
+    "Survival Culture \u2014 The patterns of adaptation, humour, and resilience developed by Coloured people to endure oppression. This book argues this culture, while adaptive, can become limiting if it prevents aspiration and collective action.",
+    "Psychological Colonisation \u2014 The ongoing impact of colonial and apartheid ideology on the Coloured mind, manifesting as self-doubt, silence, and acceptance of marginalisation.",
+    "The Five Pillars of the Coloured Mandate \u2014 This book\u2019s framework for collective action: Identity Reclamation, Mental Liberation, Economic Self-Reliance, Cultural and Political Autonomy, and Inter-generational Continuity.",
+    "Evolutionary Pride \u2014 This book\u2019s proposed replacement for internalised shame: the conscious embrace of Coloured identity as representing the future of humanity rather than a deviation from it.",
+    "Bridge People \u2014 This book\u2019s metaphor for Coloured people as connecting the divided races of South Africa, carrying the potential for reconciliation and new forms of human community.",
+    "Historical Terms",
+    "Dutch East India Company (VOC) \u2014 The trading company that established the first European settlement at the Cape in 1652, initiating the colonisation process and the complex racial mixing that produced Coloured people.",
+    "Slave Lodge \u2014 Building in Cape Town that housed enslaved people brought by the Dutch. Now a museum, it represents the foundation of Coloured identity in slavery and forced migration.",
+    "Apartheid \u2014 The system of institutionalised racial segregation and discrimination that existed in South Africa from 1948 to 1994. This book traces its specific impacts on Coloured people, including forced removals and political marginalisation.",
+    "Coloured Labour Preference Policy \u2014 Apartheid-era policy that gave Coloured workers preference over Black African workers for certain jobs, designed to create racial division and co-opt Coloured people into the apartheid system.",
+    "Tricameral Parliament \u2014 The apartheid-era constitutional reform (1983) that created separate parliamentary houses for Coloured, Indian, and White South Africans while excluding Black Africans. Widely rejected by Coloured people as a token gesture.",
+    "UDF \u2014 United Democratic Front. A major anti-apartheid coalition in the 1980s that included significant Coloured participation, demonstrating the community\u2019s commitment to liberation despite later political marginalisation.",
+    "1994 \u2014 The year of South Africa\u2019s first democratic elections. This book argues that while 1994 brought formal freedom, it did not bring justice for Coloured people, who found themselves excluded from both Black empowerment and White privilege.",
+    "Historical Timeline: The Coloured Experience",
+    "Pre-Colonial Era (Before 1652)",
+    "c.\u00a0100,000 BCE \u2014 San people (Bushmen) inhabit Southern Africa, creating the region\u2019s oldest continuous culture with distinctive rock art and hunter-gatherer traditions.",
+    "c.\u00a02,000 years ago \u2014 Khoikhoi pastoralists migrate into the Cape region, bringing sheep and cattle herding. They displace or absorb San populations in fertile areas.",
+    "c.\u00a0500 CE \u2014 Bantu-speaking agricultural peoples begin migrating into eastern Southern Africa, establishing the broader context of cultural diversity in the region.",
+    "The Colonial Era (1652\u20131910)",
+    "1652 \u2014 Dutch East India Company (VOC) establishes a refreshment station at the Cape. Jan van Riebeeck lands with 82 men and 8 women. The indigenous Khoikhoi initially trade with the Dutch.",
+    "1657 \u2014 First free burghers (settlers) granted land, beginning the expansion of European settlement. First enslaved people imported from Angola and West Africa.",
+    "1658 \u2014 First large shipment of enslaved people arrives from Angola and Guinea. The slave population will eventually outnumber free settlers.",
+    "1660s\u20131700s \u2014 Increasing conflict between settlers and Khoikhoi. Khoikhoi displaced from their lands, many becoming labourers on settler farms. Intermarriage and interracial relationships begin producing mixed-race children.",
+    "1680s\u20131790s \u2014 Large-scale importation of enslaved people from Madagascar, India, Ceylon, and the Dutch East Indies (Indonesia). Cape Malay culture develops among Muslim slaves and free blacks.",
+    "1760s \u2014 First use of the term \u201cHottentot\u201d (now considered derogatory) to describe Khoikhoi people. European racial categories begin hardening.",
+    "1795 \u2014 British seize the Cape from the Dutch. Slavery continues, but British influence gradually introduces new ideas about race and rights.",
+    "1806 \u2014 British occupation becomes permanent. Gradual erosion of VOC-era social structures.",
+    "1808 \u2014 First large-scale slave uprising at Houwhoek. Demonstrates resistance within the enslaved community.",
+    "1828 \u2014 Ordinance 50 grants legal equality to \u201cFree Persons of Colour,\u201d removing some restrictions on Khoisan and mixed-race people. Many Khoisan move to mission stations.",
+    "1834 \u2014 Slavery abolished throughout the British Empire. Former slaves become \u201capprentices\u201d for four years, then fully free. Many remain economically dependent on former masters.",
+    "1836\u20131850s \u2014 The Great Trek. Afrikaner settlers move inland to escape British rule, establishing republics in the interior. Some Coloured people accompany the trekkers as labourers.",
+    "1853 \u2014 First elected parliament in the Cape Colony includes property-qualified voters regardless of race. Some wealthy Coloured men gain voting rights.",
+    "1860s\u20131870s \u2014 Discovery of diamonds and gold transforms the South African economy. Coloured people work in mines but face increasing racial discrimination.",
+    "1880s\u20131900s \u2014 Harder racial lines drawn. The term \u201cColoured\u201d becomes more widely used to describe people of mixed ancestry. Segregation increases in housing, education, and public facilities.",
+    "1899\u20131902 \u2014 Anglo-Boer War (South African War). Coloured people serve in both British and Boer forces. Promises made to non-white South Africans are later broken.",
+    "Union and Apartheid (1910\u20131994)",
+    "1910 \u2014 Union of South Africa formed. Only White South Africans have voting rights. Coloured people, though previously enfranchised in the Cape, face disenfranchisement.",
+    "1913 \u2014 Natives Land Act restricts Black African land ownership. Coloured people occupy an ambiguous position, not fully targeted, but increasingly marginalised.",
+    "1920s\u20131930s \u2014 Increasing segregation. Residential segregation enforced in many areas. Coloured people excluded from skilled jobs and trade unions.",
+    "1936 \u2014 Native Trust and Land Act further restricts Black rights. Coloured voting rights in the Cape eroded.",
+    "1948 \u2014 National Party wins election on apartheid platform. Systematic racial classification and segregation begins.",
+    "1950 \u2014 Population Registration Act requires all South Africans to be classified by race. Group Areas Act designates residential areas by race, leading to forced removals.",
+    "1950s\u20131960s \u2014 Forced removals of Coloured communities from areas designated \u201cWhite.\u201d District Six, Simon\u2019s Town, and other vibrant communities destroyed. Residents relocated to Cape Flats townships.",
+    "1956 \u2014 Coloured people removed from the common voters roll in the Cape Province. Political rights stripped.",
+    "1960 \u2014 Sharpeville Massacre. State of emergency declared. Many Coloured political activists detained.",
+    "1960s\u20131970s \u2014 Coloured Labour Preference Policy gives Coloured workers preference over Black Africans for jobs in the Western Cape, designed to create racial division and maintain Coloured loyalty to apartheid.",
+    "1966 \u2014 District Six declared a White area. Forced removals begin, continuing through the 1970s. Over 60,000 people displaced.",
+    "1976 \u2014 Soweto Uprising. Student protests against Afrikaans-medium education spread. Coloured students in the Western Cape join protests.",
+    "1983 \u2014 Tricameral Parliament established with separate houses for Coloured, Indian, and White South Africans. Black Africans excluded. Majority of Coloured people boycott elections, rejecting the system.",
+    "1980s \u2014 United Democratic Front (UDF) mobilises against apartheid, with significant Coloured participation. Community organisations, trade unions, and youth movements active in townships.",
+    "1985 \u2014 State of emergency declared. Widespread unrest in Coloured townships. Youth activists clash with police and security forces.",
+    "1986 \u2014 Pass laws abolished. Influx of Black Africans to the Western Cape increases, changing demographics and creating new tensions.",
+    "1989\u20131990 \u2014 FW de Klerk becomes president. Nelson Mandela released. Negotiations for democratic transition begin.",
+    "1990\u20131994 \u2014 Negotiation period. Coloured political organisations debate their position. Some fear majority rule will mean marginalisation.",
+    "Democracy and Its Discontents (1994\u2013Present)",
+    "1994 \u2014 First democratic elections. ANC wins national power. Coloured people vote in large numbers, hoping for inclusion and redress.",
+    "1994\u20131999 \u2014 Reconstruction and Development Programme (RDP) promises housing and services. Limited delivery in Coloured areas. Black Economic Empowerment (BEE) policies exclude many Coloured people.",
+    "1996 \u2014 Final Constitution adopted. Equality before the law, but economic inequalities persist. Coloured people increasingly feel invisible in the \u201crainbow nation\u201d narrative.",
+    "1999\u20132004 \u2014 GEAR (Growth, Employment and Redistribution) policy emphasises market economics. Job losses in manufacturing hit Coloured workers hard.",
+    "2000s \u2014 Gang violence and drug problems escalate in the Cape Flats. The \u201ctik\u201d (crystal meth) epidemic devastates communities. Accusations of police neglect and complicity.",
+    "2004\u20132009 \u2014 Continued economic exclusion. Coloured people largely excluded from BEE benefits. Frustration grows with both ANC and DA.",
+    "2009\u20132014 \u2014 DA consolidates power in the Western Cape. Some Coloured people shift support to the DA, hoping for better service delivery. Others remain loyal to the ANC. Many feel unrepresented by both.",
+    "2010 \u2014 FIFA World Cup held in South Africa. Cape Town showcases its beauty while Cape Flats townships remain neglected.",
+    "2014\u20132019 \u2014 Rising Coloured activism. Social media enables new forms of organising. Debates about identity, representation, and redress intensify.",
+    "2019 \u2014 Elections. Both ANC and DA lose ground in Western Cape Coloured areas. Independent candidates and smaller parties gain support.",
+    "2020\u20132021 \u2014 COVID-19 pandemic. Hard lockdown devastates the informal economy in Coloured areas. Gang violence continues. Calls for military intervention in the Cape Flats.",
+    "2021 \u2014 July unrest. Widespread looting and violence in KwaZulu-Natal and Gauteng. Western Cape largely spared, but tensions high.",
+    "2022\u20132024 \u2014 Continued political realignment. Coloured voters increasingly unpredictable for major parties. Cultural renaissance in arts, language, and identity politics.",
+    "The Present \u2014 The Coloured population of South Africa numbers approximately 5 million, concentrated in the Western Cape, Eastern Cape, and Northern Cape. Continued challenges with poverty, unemployment, education, and violence. But also a growing cultural and political awakening, the subject of this book.",
+    "Key Dates in Cultural History",
+    "1900s\u20131920s \u2014 Development of Coon Carnival (later Klopse) traditions. Minstrel troupes form.",
+    "1930s\u20131950s \u2014 Golden age of Cape jazz. District Six becomes a cultural hub.",
+    "1960s \u2014 Forced removals disrupt cultural life. But resistance through culture continues.",
+    "1970s\u20131980s \u2014 Protest theatre, poetry, and music flourish. Artists use culture to resist apartheid.",
+    "1990s \u2014 Post-apartheid cultural explosion. But also commercialisation and dilution of traditional forms.",
+    "2000s\u20132010s \u2014 Revival of interest in the Kaaps language and Coloured identity. Young artists reclaim heritage.",
+    "2020s \u2014 The Coloured Renaissance. A new generation refuses inherited shame. This book enters the conversation.",
+    "This timeline is not exhaustive. It is a starting point for understanding the complex history that produced the Coloured experience. For further reading, consult the works listed in the bibliography and the resources available through Coloured cultural and historical organisations."
+  ];
+  var BOOK_SUBTITLES = [
+    "We are not the in-between. We are the bridge.",
+    "The Natural Evolution Theory of Coloured Identity",
+    "Where the Path Begins",
+    "The Origins They Don\u2019t Teach",
+    "The Khoisan Are Not Coloureds",
+    "Not Confusion. Convergence.",
+    "The Truth Hidden in Our Blood",
+    "The Invisible Majority",
+    "The Psychological Assault",
+    "The Wound We Turned Inward",
+    "Addiction: The Designer Epidemic",
+    "The Turning Point",
+    "The Word They Gave Us",
+    "The Evolutionary Theory of Coloured Identity",
+    "Our Identity Is Our Weapon",
+    "Rebirth Through Ownership",
+    "Politics as Psychological Warfare",
+    "What We Passed Down",
+    "What Is a Mandate?",
+    "Why a Nation? Aren\u2019t We South African?",
+    "The Five Pillars of the Coloured Mandate",
+    "The Path Forward Is Not Easy",
+    "Language, Kaaps as Code",
+    "Music, Survival in Sound",
+    "Faith, Not Just Religion, but Resilience",
+    "Humor, Food, Ritual, Our Hidden Language",
+    "Why Culture Is the Battlefield",
+    "Our Children Are Not Confused, They\u2019re Awake",
+    "Where We Failed Them",
+    "Youth Is Not the Future. It\u2019s Now.",
+    "Not a New Generation, A Next Generation",
+    "Why Identity Must Be Political",
+    "Leadership Is Not Clean, It\u2019s Courageous",
+    "Evolutionary Politics, A New Human Model",
+    "The Liberation Path, We Must Commit",
+    "Standing on the Battlefield",
+    "Why We Are Considered Politically Naive",
+    "The Disaster of Our Current Identity",
+    "The Illusion of Progress",
+    "Naming the Condition",
+    "Mental Sovereignty",
+    "From Internalized Shame to Evolutionary Pride",
+    "The First Target of Any Colonizer Is Culture",
+    "Hijacked, Not Destroyed",
+    "Cultural Confusion: The Real Weapon",
+    "Culture Is a Weapon, Not an Add-On",
+    "What We Must Reclaim",
+    "From Cultural Shame to Cultural Strategy",
+    "Innovation, Not Nostalgia",
+    "The Silent Workers of Empire",
+    "Excluded by Design, Not Default",
+    "The Illusion of Inclusion",
+    "The Cost of Surviving Without Power",
+    "Black Capitalism, White Capitalism, and Coloured Nothingness",
+    "Caught Between Two Appetites",
+    "Reclaiming Economic Sovereignty: A Blueprint",
+    "The ANC\u2019s Bargain: Freedom for Black Votes, Silence for Coloureds",
+    "The DA\u2019s Deal: A Party of Two Sides",
+    "A Word From the Author: Why I See Race",
+    "A Letter to a Young Politician",
+    "Why It Worked",
+    "Our Own Silence",
+    "The Blueprint for Political Reclamation",
+    "The Final Line in the Sand",
+    "The Silent Cultural Genocide",
+    "Cultural Amnesia Is Designed to Keep You Powerless",
+    "But We Do Have a Culture. We Just Haven\u2019t Owned It.",
+    "Rebuilding Is Strategic, Not Cosmetic",
+    "From Pain to Pride",
+    "Culture Is the Soul of Liberation",
+    "Defined by Everyone but Ourselves",
+    "When Silence Becomes Betrayal",
+    "Protect Your Own, Fund Your Own, Defend Your Own",
+    "Let\u2019s Make It Plain",
+    "Why the Coloured Conscious Must Rise",
+    "The Council of Elders",
+    "The Centres",
+    "What Must Be Taught",
+    "Where the Money Doesn\u2019t Move",
+    "Reculturalising the Table",
+    "From Screens to Streets",
+    "Cultural and Linguistic Terms",
+    "Political and Social Terms",
+    "Concepts From This Book",
+    "Historical Terms",
+    "Pre-Colonial Era (Before 1652)",
+    "The Colonial Era (1652\u20131910)",
+    "Union and Apartheid (1910\u20131994)",
+    "Democracy and Its Discontents (1994\u2013Present)",
+    "Key Dates in Cultural History"
+  ];
+  var HEADINGS_SET = {};
+  BOOK_HEADINGS.forEach(function(h){ HEADINGS_SET[h] = true; });
+  var SUBTITLES_SET = {};
+  BOOK_SUBTITLES.forEach(function(s){ SUBTITLES_SET[s] = true; });
+  function isHeading(text){ return !!HEADINGS_SET[text]; }
+  function isSubtitle(text){ return !!SUBTITLES_SET[text]; }
+
+  function escapeHtml(s){
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  // ---------- State ----------
+  var state = {
+    title: BOOK_TITLE,
+    author: BOOK_AUTHOR,
+    subtitle: BOOK_SUBTITLE,
+    pages: [],
+    current: 0,
+    animating: false,
+    fitScale: 1,
+    zoom: 1,
+    pageCount: 2 // 1 or 2, page-layout mode
+  };
+
+  var ZOOM_MIN = 0.6, ZOOM_MAX = 2.2, ZOOM_STEP = 0.15;
+
+  var $ = function(id){ return document.getElementById(id); };
+  var measurer = $("measurer");
+  var leftContent = $("leftContent"), leftFolio = $("leftFolio");
+  var underContent = $("underContent"), underFolio = $("underFolio");
+  var frontContent = $("frontContent"), frontFolio = $("frontFolio");
+  var backContent = $("backContent"), backFolio = $("backFolio");
+  var flipLeaf = $("flipLeaf");
+  var progressLabel = $("progressLabel"), progressFill = $("progressFill");
+  var ribbon = $("ribbon");
+  var loadingNote = $("loadingNote");
+  var bookWrap = $("bookWrap");
+  var bookEl = $("bookEl");
+  var leavesArea = $("leavesArea");
+
+  // ---------- Pagination ----------
+  // Pages are filled with as many *complete* paragraphs as fit. A paragraph
+  // is never split across a page boundary — it either fits on the current
+  // page in full, or it starts the next page instead. That means a page can
+  // occasionally end a little short of the bottom margin, but every
+  // paragraph always reads as one continuous block, with its indent and
+  // alignment applied consistently — no mid-sentence breaks, no partial
+  // fragments. (An earlier version of this code split paragraphs across
+  // pages to fill them more fully; that's what caused the broken gaps and
+  // mixed-up indenting, so it's been removed in favor of this simpler,
+  // reliable approach.)
+  // The two heading rules are unchanged: a chapter heading always starts a
+  // brand-new page, and an in-chapter subtitle is only placed on a page if
+  // there's also room left for at least a few lines of body text under it —
+  // otherwise it's pushed to the next page instead, so a subtitle never ends
+  // up stranded at the very bottom.
+  var MIN_TRAILING_AFTER_SUBTITLE = 70; // px
+
+  function segmentHtml(seg){
+    var text = BOOK_BODY_PARAS[seg.idx];
+    var slice = seg.kind === "full" ? text : text.slice(seg.start, seg.end);
+    var isParaStart = seg.kind === "full" || seg.start === 0;
+    var cls = "";
+
+    if (isParaStart && isHeading(text)){
+      cls = ' class="chapter-heading"';
+    } else if (isParaStart && isSubtitle(text)){
+      cls = ' class="subtitle-heading"';
+    } else {
+      // No first-line indent when: this is the continuation of a paragraph
+      // split across a page turn, or this is the first ordinary paragraph
+      // right after a chapter heading / subtitle (standard book convention).
+      var noIndent = !isParaStart;
+      if (isParaStart && seg.idx > 0){
+        var prevText = BOOK_BODY_PARAS[seg.idx - 1];
+        if (isHeading(prevText) || isSubtitle(prevText)) noIndent = true;
+      }
+      if (noIndent) cls = ' class="no-indent"';
+    }
+    return "<p" + cls + ">" + escapeHtml(slice) + "</p>";
+  }
+
+  function paginate(){
+    loadingNote.style.display = "block";
+    var maxHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--page-h')) - 86;
+
+    function heightOf(segments){
+      measurer.innerHTML = segments.map(segmentHtml).join("");
+      return measurer.scrollHeight;
+    }
+    function fits(segments){ return heightOf(segments) <= maxHeight; }
+
+    var pages = [];
+    pages.push({ type: "title" });
+
+    var paraIdx = 0;
+    var total = BOOK_BODY_PARAS.length;
+    var guardOuter = 0;
+
+    while (paraIdx < total && guardOuter < 20000){
+      guardOuter++;
+      var segs = [];
+      var pageHasContent = false;
+      var guardInner = 0;
+
+      while (paraIdx < total && guardInner < 20000){
+        guardInner++;
+        var text = BOOK_BODY_PARAS[paraIdx];
+        var heading = isHeading(text);
+        var subtitle = isSubtitle(text);
+
+        if ((heading || subtitle) && pageHasContent){
+          if (heading) break;
+          var withSub = segs.concat([{ idx: paraIdx, kind: "full" }]);
+          if (!fits(withSub)) break;
+          if (maxHeight - heightOf(withSub) < MIN_TRAILING_AFTER_SUBTITLE) break;
+          // otherwise fall through and place the subtitle below
+        }
+
+        var candidate = segs.concat([{ idx: paraIdx, kind: "full" }]);
+        if (fits(candidate)){
+          segs = candidate;
+          pageHasContent = true;
+          paraIdx++;
+          continue;
+        }
+
+        if (!pageHasContent){
+          // A single paragraph taller than a whole page on its own (rare —
+          // e.g. one very long unbroken block of text). Rather than split it
+          // or loop forever, give it the page to itself; the very bottom may
+          // get visually clipped, which is a far better failure mode than
+          // broken pagination affecting every page.
+          segs.push({ idx: paraIdx, kind: "full" });
+          paraIdx++;
+        }
+        break;
+      }
+
+      pages.push({ type: "content", segments: segs });
+    }
+
+    pages.push({ type: "end" });
+    state.pages = pages;
+    if (state.current >= pages.length) state.current = pages.length - 1;
+    loadingNote.style.display = "none";
+  }
+
+  function pageMarkup(pageObj){
+    if (!pageObj) return { content: "", folio: "" };
+    if (pageObj.type === "title"){
+      var authorLine = state.author ? '<div class="t-sub">' + escapeHtml(state.author) + '</div>' : '';
+      var subtitleLine = state.subtitle ? '<div class="t-subtitle">' + escapeHtml(state.subtitle) + '</div>' : '';
+      return {
+        content: '<div class="title-page">' +
+                 '<div class="t-title">' + escapeHtml(state.title) + '</div>' +
+                 subtitleLine +
+                 '<div class="t-rule"></div>' +
+                 authorLine +
+                 '</div>',
+        folio: ""
+      };
+    }
+    if (pageObj.type === "end"){
+      return { content: '<div class="end-page">The End</div>', folio: "" };
+    }
+    var html = pageObj.segments.map(segmentHtml).join("");
+    return { content: html, folio: String(state.pages.indexOf(pageObj)) };
+  }
+
+  function pageTypeClass(pageObj){
+    if (!pageObj) return "";
+    if (pageObj.type === "title") return " title-page";
+    if (pageObj.type === "end") return " end-page";
+    return "";
+  }
+
+  // A "pair index" of 0 is the special opening spread: blank left, pages[0] alone
+  // on the right (like a real book's title page). Every other pair index is an
+  // odd number, showing pages[idx] on the left and pages[idx+1] on the right —
+  // exactly like a real book, where turning a page reveals two brand-new pages.
+  function getDisplayedPair(idx){
+    var pages = state.pages;
+    if (idx === 0) return { left: undefined, right: pages[0] };
+    return { left: pages[idx], right: pages[idx + 1] };
+  }
+
+  function computeTarget(cur, direction, pageCount, total){
+    var target;
+    if (pageCount === 1){
+      target = cur + direction;
+    } else {
+      if (direction === 1) target = (cur === 0) ? 1 : cur + 2;
+      else target = (cur <= 1) ? 0 : cur - 2;
+    }
+    if (target < 0 || target >= total || target === cur) return null;
+    return target;
+  }
+
+  // ---------- Read-aloud narration ----------
+  var narration = { active: false };
+  var narrateBtn = $("narrateBtn");
+
+  function getPlainTextForPage(pageObj){
+    if (!pageObj) return "";
+    if (pageObj.type === "title"){
+      var parts = [state.title];
+      if (state.subtitle) parts.push(state.subtitle);
+      if (state.author) parts.push("By " + state.author);
+      return parts.join(". ");
+    }
+    if (pageObj.type === "end") return "The End.";
+    return pageObj.segments.map(function(seg){
+      var text = BOOK_BODY_PARAS[seg.idx];
+      return seg.kind === "full" ? text : text.slice(seg.start, seg.end);
+    }).join(". ");
+  }
+
+  function getActiveReadingPageObj(){
+    if (state.pageCount === 1) return state.pages[state.current];
+    var pair = getDisplayedPair(state.current);
+    return pair.right;
+  }
+
+  function updateNarrationButton(){
+    narrateBtn.innerHTML = narration.active ? "&#9209; Stop" : "&#128266; Read aloud";
+    narrateBtn.classList.toggle("active", narration.active);
+  }
+
+  function stopNarration(){
+    narration.active = false;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    updateNarrationButton();
+  }
+
+  // Web Speech API doesn't expose accent or gender directly — only whatever
+  // voices the device/browser happens to have installed, each with a name
+  // and a language tag. Until real voice cloning is wired up, this picks
+  // the closest available match: prefer a South African English/Afrikaans
+  // voice, and within that (or as a fallback across any English voice),
+  // prefer one whose name suggests a male voice, using the common names
+  // each platform (Chrome/Android, Edge/Windows, Safari/macOS) ships.
+  function pickNarrationVoice(){
+    if (!window.speechSynthesis) return null;
+    var voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+    var savedURI = null;
+    try { savedURI = localStorage.getItem(VOICE_PREF_KEY); } catch(e){}
+    if (savedURI){
+      var chosen = voices.filter(function(v){ return v.voiceURI === savedURI; })[0];
+      if (chosen) return chosen;
+    }
+    var maleNames = ["male", "david", "daniel", "george", "james", "mark", "fred", "arthur", "oliver", "guy", "ryan", "thabo", "sipho", "will"];
+    function score(v){
+      var name = (v.name || "").toLowerCase();
+      var lang = (v.lang || "").toLowerCase();
+      var s = 0;
+      if (lang === "en-za") s += 100;
+      else if (lang === "af-za" || lang === "af") s += 90;
+      else if (lang.indexOf("za") !== -1) s += 60;
+      else if (lang.indexOf("en") === 0) s += 10;
+      for (var i=0;i<maleNames.length;i++){
+        if (name.indexOf(maleNames[i]) !== -1){ s += 20; break; }
+      }
+      return s;
+    }
+    var best = null, bestScore = -1;
+    voices.forEach(function(v){
+      var s = score(v);
+      if (s > bestScore){ bestScore = s; best = v; }
+    });
+    return best;
+  }
+
+  function speakCurrentPage(){
+    if (!window.speechSynthesis){
+      narration.active = false;
+      updateNarrationButton();
+      return;
+    }
+    window.speechSynthesis.cancel();
+    var text = getPlainTextForPage(getActiveReadingPageObj());
+    if (!text){ stopNarration(); return; }
+    var utt = new SpeechSynthesisUtterance(text);
+    var savedPitch = null, savedRate = null;
+    try {
+      savedPitch = parseFloat(localStorage.getItem(PITCH_PREF_KEY));
+      savedRate = parseFloat(localStorage.getItem(RATE_PREF_KEY));
+    } catch(e){}
+    utt.rate = (isFinite(savedRate) && savedRate) ? savedRate : 0.95; // calm, unhurried pace
+    utt.pitch = (isFinite(savedPitch) && savedPitch) ? savedPitch : 1.0; // normal pitch by default; adjustable in Voice settings
+    utt.lang = "en-ZA"; // hint only — falls back gracefully if unavailable
+    var voice = pickNarrationVoice();
+    if (voice) utt.voice = voice;
+    utt.onend = function(){
+      if (!narration.active) return;
+      var t = computeTarget(state.current, 1, state.pageCount, state.pages.length);
+      if (t === null){ stopNarration(); return; }
+      // Advance silently (no flip animation) so continuous narration stays smooth.
+      state.current = t;
+      renderStatic();
+      speakCurrentPage();
+    };
+    utt.onerror = function(){ stopNarration(); };
+    window.speechSynthesis.speak(utt);
+  }
+
+  function toggleNarration(){
+    if (narration.active){
+      stopNarration();
+    } else {
+      narration.active = true;
+      updateNarrationButton();
+      speakCurrentPage();
+    }
+  }
+  narrateBtn.addEventListener("click", toggleNarration);
+
+  // ---------- Voice settings modal ----------
+  var voiceSettingsBtn = $("voiceSettingsBtn");
+  var voiceModalBackdrop = $("voiceModalBackdrop");
+  var voiceSelect = $("voiceSelect");
+  var pitchRange = $("pitchRange"), pitchValue = $("pitchValue");
+  var rateRange = $("rateRange"), rateValue = $("rateValue");
+  var voiceStatus = $("voiceStatus");
+
+  function populateVoiceSelect(){
+    if (!window.speechSynthesis) return;
+    var voices = window.speechSynthesis.getVoices() || [];
+    var savedURI = null;
+    try { savedURI = localStorage.getItem(VOICE_PREF_KEY); } catch(e){}
+    voiceSelect.innerHTML = "";
+    var autoOpt = document.createElement("option");
+    autoOpt.value = "";
+    autoOpt.textContent = "Auto (best available male / South African voice)";
+    voiceSelect.appendChild(autoOpt);
+    voices.forEach(function(v){
+      var opt = document.createElement("option");
+      opt.value = v.voiceURI;
+      opt.textContent = v.name + " (" + v.lang + ")";
+      voiceSelect.appendChild(opt);
+    });
+    voiceSelect.value = savedURI || "";
+    voiceStatus.textContent = voices.length ? "" :
+      "No voices available yet \u2014 your browser may still be loading them. Give it a moment and reopen this.";
+  }
+
+  try {
+  if (voiceSettingsBtn){
+    voiceSettingsBtn.addEventListener("click", function(){
+      if (narration.active) stopNarration();
+      var savedPitch = null, savedRate = null;
+      try {
+        savedPitch = parseFloat(localStorage.getItem(PITCH_PREF_KEY));
+        savedRate = parseFloat(localStorage.getItem(RATE_PREF_KEY));
+      } catch(e){}
+      pitchRange.value = (isFinite(savedPitch) && savedPitch) ? savedPitch : 1.0;
+      rateRange.value = (isFinite(savedRate) && savedRate) ? savedRate : 0.95;
+      pitchValue.textContent = parseFloat(pitchRange.value).toFixed(2);
+      rateValue.textContent = parseFloat(rateRange.value).toFixed(2);
+      populateVoiceSelect();
+      voiceModalBackdrop.classList.add("open");
+    });
+    if (window.speechSynthesis){
+      // Voice lists load asynchronously on first page load in some browsers.
+      // Using the classic onX property (not addEventListener) here on purpose:
+      // some mobile/WebView browsers don't fully implement EventTarget on the
+      // speechSynthesis object, and calling addEventListener on it there throws
+      // — which, unguarded, would stop this whole script partway through and
+      // break pagination/rendering for the rest of the page, not just this
+      // feature. The try/catch around this whole block is a second safety net
+      // for the same reason.
+      window.speechSynthesis.onvoiceschanged = function(){
+        if (voiceModalBackdrop.classList.contains("open")) populateVoiceSelect();
+      };
+    }
+    pitchRange.addEventListener("input", function(){ pitchValue.textContent = parseFloat(pitchRange.value).toFixed(2); });
+    rateRange.addEventListener("input", function(){ rateValue.textContent = parseFloat(rateRange.value).toFixed(2); });
+    $("cancelVoice").addEventListener("click", function(){ voiceModalBackdrop.classList.remove("open"); });
+    $("saveVoice").addEventListener("click", function(){
+      try {
+        if (voiceSelect.value) localStorage.setItem(VOICE_PREF_KEY, voiceSelect.value);
+        else localStorage.removeItem(VOICE_PREF_KEY);
+        localStorage.setItem(PITCH_PREF_KEY, pitchRange.value);
+        localStorage.setItem(RATE_PREF_KEY, rateRange.value);
+      } catch(e){}
+      voiceModalBackdrop.classList.remove("open");
+    });
+    voiceModalBackdrop.addEventListener("click", function(e){
+      if (e.target === voiceModalBackdrop) voiceModalBackdrop.classList.remove("open");
+    });
+  }
+  } catch(e){}
+
+  // ---------- Render (static, no animation) ----------
+  function renderStatic(){
+    var pages = state.pages;
+    var cur = state.current;
+
+    if (state.pageCount === 1){
+      var only = pages[cur];
+      var m = pageMarkup(only);
+      underContent.className = "page-content" + pageTypeClass(only);
+      underContent.innerHTML = m.content;
+      underFolio.textContent = m.folio;
+      leftContent.innerHTML = "";
+      leftFolio.textContent = "";
+    } else {
+      var pair = getDisplayedPair(cur);
+
+      var l = pageMarkup(pair.left);
+      leftContent.className = "page-content" + pageTypeClass(pair.left);
+      leftContent.innerHTML = l.content;
+      leftFolio.textContent = l.folio;
+
+      var r = pageMarkup(pair.right);
+      underContent.className = "page-content" + pageTypeClass(pair.right);
+      underContent.innerHTML = r.content;
+      underFolio.textContent = r.folio;
+    }
+
+    flipLeaf.classList.remove("animating");
+    flipLeaf.style.transform = "rotateY(0deg)";
+    flipLeaf.style.visibility = "hidden";
+    frontContent.innerHTML = ""; backContent.innerHTML = "";
+    frontFolio.textContent = ""; backFolio.textContent = "";
+
+    updateChrome();
+  }
+
+  function updateChrome(){
+    var total = state.pages.length;
+    var cur = state.current;
+    progressLabel.textContent = Math.min(cur + 1, total) + " / " + total;
+    progressFill.style.width = (total > 1 ? (cur / (total - 1)) * 100 : 0) + "%";
+    ribbon.style.right = (46 + (cur / Math.max(1, total - 1)) * 160) + "px";
+    $("prevBtn").disabled = computeTarget(cur, -1, state.pageCount, total) === null;
+    $("nextBtn").disabled = computeTarget(cur, 1, state.pageCount, total) === null;
+    var announcer = $("pageAnnouncer");
+    if (announcer) announcer.textContent = "Page " + Math.min(cur + 1, total) + " of " + total;
+  }
+
+  // ---------- Flip animation ----------
+  function goNext(){ flip(1); }
+  function goPrev(){ flip(-1); }
+
+  function flip(direction){
+    if (state.animating) return;
+    var pages = state.pages;
+    var cur = state.current;
+    var target = computeTarget(cur, direction, state.pageCount, pages.length);
+    if (target === null) return;
+
+    if (narration.active) stopNarration();
+
+    var osReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (osReducedMotion){
+      state.current = target;
+      renderStatic();
+      return;
+    }
+
+    state.animating = true;
+    flipLeaf.classList.remove("animating");
+    flipLeaf.style.visibility = "visible";
+
+    if (state.pageCount === 1){
+      // Single page at a time: cur and target are always adjacent, so this is
+      // a plain one-leaf flip between exactly those two pages.
+      var L = Math.min(cur, target);
+      var pageL = pages[L];
+      var pageR = pages[L + 1];
+      var mL = pageMarkup(pageL);
+      var mR = pageMarkup(pageR);
+      frontContent.className = "page-content" + pageTypeClass(pageL);
+      frontContent.innerHTML = mL.content;
+      frontFolio.textContent = mL.folio;
+      backContent.className = "page-content" + pageTypeClass(pageR);
+      backContent.innerHTML = mR.content;
+      backFolio.textContent = mR.folio;
+
+      var destObj = pages[target];
+      var mDest = pageMarkup(destObj);
+      underContent.className = "page-content" + pageTypeClass(destObj);
+      underContent.innerHTML = mDest.content;
+      underFolio.textContent = mDest.folio;
+    } else {
+      // Two-page spread: turning reveals a whole new pair, just like a real
+      // book. The left page swaps instantly (no animation); the right page
+      // is what visibly flips, from the old right page to the new one.
+      var oldPair = getDisplayedPair(cur);
+      var newPair = getDisplayedPair(target);
+
+      var lm = pageMarkup(newPair.left);
+      leftContent.className = "page-content" + pageTypeClass(newPair.left);
+      leftContent.innerHTML = lm.content;
+      leftFolio.textContent = lm.folio;
+
+      var mFront = pageMarkup(oldPair.right);
+      var mBack = pageMarkup(newPair.right);
+      frontContent.className = "page-content" + pageTypeClass(oldPair.right);
+      frontContent.innerHTML = mFront.content;
+      frontFolio.textContent = mFront.folio;
+      backContent.className = "page-content" + pageTypeClass(newPair.right);
+      backContent.innerHTML = mBack.content;
+      backFolio.textContent = mBack.folio;
+
+      underContent.className = "page-content" + pageTypeClass(newPair.right);
+      underContent.innerHTML = mBack.content;
+      underFolio.textContent = mBack.folio;
+    }
+
+    if (direction === 1){
+      flipLeaf.style.transform = "rotateY(0deg)";
+      void flipLeaf.offsetWidth;
+      flipLeaf.classList.add("animating");
+      flipLeaf.style.transform = "rotateY(-180deg)";
+    } else {
+      flipLeaf.style.transform = "rotateY(-180deg)";
+      void flipLeaf.offsetWidth;
+      flipLeaf.classList.add("animating");
+      flipLeaf.style.transform = "rotateY(0deg)";
+    }
+
+    var done = function(e){
+      if (e && e.target !== flipLeaf) return;
+      flipLeaf.removeEventListener("transitionend", done);
+      state.current = target;
+      state.animating = false;
+      renderStatic();
+    };
+    flipLeaf.addEventListener("transitionend", done);
+  }
+
+  // ---------- Page-layout mode (1 page / 2 page) ----------
+  function setPageCount(n){
+    if (n !== state.pageCount){
+      if (n === 1){
+        // Switching to single-page: point at whichever page was the "active"
+        // (right-hand) page of the current spread.
+        state.current = (state.current === 0) ? 0 : state.current + 1;
+      } else {
+        // Switching to two-page: snap to the nearest valid pair-start index
+        // (0, or the nearest odd number at/below the current single-page index).
+        var s = state.current;
+        state.current = (s <= 0) ? 0 : (s % 2 === 1 ? s : s - 1);
+      }
+    }
+    state.pageCount = n;
+    document.documentElement.style.setProperty("--page-count", n);
+    leavesArea.classList.toggle("single-page-mode", n === 1);
+    bookEl.classList.toggle("single-page-mode", n === 1);
+    $("onePageBtn").classList.toggle("active", n === 1);
+    $("twoPageBtn").classList.toggle("active", n === 2);
+    $("onePageBtn").setAttribute("aria-pressed", n === 1 ? "true" : "false");
+    $("twoPageBtn").setAttribute("aria-pressed", n === 2 ? "true" : "false");
+    renderStatic();
+    rescale();
+  }
+  $("onePageBtn").addEventListener("click", function(){ setPageCount(1); });
+  $("twoPageBtn").addEventListener("click", function(){ setPageCount(2); });
+
+  // ---------- Scaling to viewport ----------
+  var stageEl = document.querySelector(".stage");
+
+  function rescale(){
+    var pageW = 440, pageH = 620;
+    var bookW = pageW * state.pageCount + 56 + 56;
+    var bookH = pageH + 48 + 80;
+    var availW = window.innerWidth - 60;
+    var availH = window.innerHeight - 120;
+    var scale = Math.min(availW / bookW, availH / bookH, 1.1);
+    state.fitScale = Math.max(0.35, scale);
+    applyScale();
+  }
+  function applyScale(){
+    var combined = state.fitScale * state.zoom;
+    document.documentElement.style.setProperty("--scale", combined);
+    stageEl.classList.toggle("zoomed", state.zoom > 1.001);
+  }
+  function setZoom(next){
+    state.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+    applyScale();
+    updateZoomChrome();
+  }
+  function updateZoomChrome(){
+    $("zoomMinus").disabled = state.zoom <= ZOOM_MIN + 0.001;
+    $("zoomPlus").disabled = state.zoom >= ZOOM_MAX - 0.001;
+  }
+
+  // ---------- Events ----------
+  $("nextBtn").addEventListener("click", goNext);
+  $("prevBtn").addEventListener("click", goPrev);
+  function zoneClick(handler){
+    return function(){
+      if (window.getSelection().toString().length > 0) return;
+      handler();
+    };
+  }
+  $("zoneNext").addEventListener("click", zoneClick(goNext));
+  $("zonePrev").addEventListener("click", zoneClick(goPrev));
+
+  document.addEventListener("keydown", function(e){
+    if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goNext(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+  });
+
+  window.addEventListener("resize", rescale);
+  $("zoomMinus").addEventListener("click", function(){ setZoom(state.zoom - ZOOM_STEP); });
+  $("zoomPlus").addEventListener("click", function(){ setZoom(state.zoom + ZOOM_STEP); });
+  $("zoomReset").addEventListener("click", function(){ setZoom(1); stageEl.scrollTop = 0; stageEl.scrollLeft = 0; });
+  stageEl.addEventListener("wheel", function(e){
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    setZoom(state.zoom + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+  }, { passive: false });
+
+  // ---------- Cover gate (closed book) ----------
+  var coverGate = $("coverGate");
+  coverGate.addEventListener("click", function(){
+    coverGate.style.display = "none";
+  });
+
+  // ---------- Load-a-book modal ----------
+  var modalBackdrop = $("modalBackdrop");
+  // Populated right after a successful .docx upload with each paragraph's
+  // original Word style (heading / subtitle / body), in the same order as
+  // the paragraphs dropped into the textarea. Used at "Open book" time to
+  // carry chapter headings over instead of flattening the whole book into
+  // plain body paragraphs. Cleared whenever the user edits the textarea by
+  // hand, loads a plain .txt file, or reopens the modal, so it never gets
+  // applied against text it no longer matches.
+  var pendingDocxStructure = null;
+  $("openLoad").addEventListener("click", function(){
+    if (narration.active) stopNarration();
+    $("titleInput").value = state.title;
+    $("authorInput").value = state.author;
+    setLoadStatus("", false);
+    pendingDocxStructure = null;
+    modalBackdrop.classList.add("open");
+  });
+  $("textInput").addEventListener("input", function(){ pendingDocxStructure = null; });
+  $("cancelLoad").addEventListener("click", function(){ modalBackdrop.classList.remove("open"); });
+  var loadStatus = $("loadStatus");
+  function setLoadStatus(msg, isError){
+    loadStatus.textContent = msg || "";
+    loadStatus.classList.toggle("error", !!isError);
+  }
+  $("fileTrigger").addEventListener("click", function(){ $("fileInput").click(); });
+  $("fileInput").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var name = file.name || "";
+    var isDocx = /\.docx$/i.test(name);
+    setLoadStatus("Reading " + name + "\u2026", false);
+
+    if (isDocx){
+      if (!window.mammoth){
+        setLoadStatus("Could not load the .docx reader (are you offline?). Try again, or paste the text instead.", true);
+        return;
+      }
+      pendingDocxStructure = null;
+      var reader = new FileReader();
+      reader.onerror = function(){ setLoadStatus("Couldn't read that file. Try again, or paste the text instead.", true); };
+      reader.onload = function(ev){
+        // Convert to HTML rather than mammoth's plain "raw text" mode: this
+        // gives us one <p>/<hN> per real Word paragraph, so we can rebuild
+        // clean blank-line-separated paragraphs ourselves (instead of
+        // trusting how mammoth joins raw text internally) AND remember which
+        // paragraphs were styled as Word headings, so chapters can still
+        // start on a fresh page with heading styling instead of collapsing
+        // into one long stream of identical body paragraphs.
+        window.mammoth.convertToHtml({ arrayBuffer: ev.target.result })
+          .then(function(result){
+            var doc = new DOMParser().parseFromString(result.value, "text/html");
+            var blocks = doc.body.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li");
+            var paras = [];
+            var structure = [];
+            blocks.forEach(function(el){
+              var t = el.textContent.replace(/\s+/g, " ").trim();
+              if (!t) return;
+              paras.push(t);
+              var tag = el.tagName.toLowerCase();
+              var kind = "body";
+              if (tag === "h1" || tag === "h2") kind = "heading";
+              else if (tag === "h3" || tag === "h4" || tag === "h5" || tag === "h6") kind = "subtitle";
+              structure.push({ text: t, kind: kind });
+            });
+            if (!paras.length){
+              setLoadStatus("That .docx file looks empty once the formatting is stripped out.", true);
+              return;
+            }
+            pendingDocxStructure = structure;
+            $("textInput").value = paras.join("\n\n");
+            var headingCount = structure.filter(function(s){ return s.kind !== "body"; }).length;
+            var structureNote = headingCount ? (" " + headingCount + " heading" + (headingCount === 1 ? "" : "s") + " detected and will carry over as chapter breaks.") : "";
+            setLoadStatus(name + " loaded (" + paras.length + " paragraphs)." + structureNote + " Review the text below, then tap Open book.", false);
+          })
+          .catch(function(){
+            setLoadStatus("Couldn't read that .docx file. It may be corrupted, password-protected, or a .doc (old format) file — try re-saving it as .docx, or paste the text instead.", true);
+          });
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      pendingDocxStructure = null;
+      var txtReader = new FileReader();
+      txtReader.onerror = function(){ setLoadStatus("Couldn't read that file. Try again, or paste the text instead.", true); };
+      txtReader.onload = function(ev){
+        $("textInput").value = ev.target.result;
+        setLoadStatus(name + " loaded. Review the text below, then tap Open book.", false);
+      };
+      txtReader.readAsText(file);
+    }
+  });
+  $("confirmLoad").addEventListener("click", function(){
+    var text = $("textInput").value.trim();
+    if (!text){ modalBackdrop.classList.remove("open"); return; }
+    state.title = $("titleInput").value.trim() || "Untitled";
+    state.author = $("authorInput").value.trim();
+    $("brandTitle").textContent = state.title;
+    // Loading custom text falls back to one paragraph per page (no heading
+    // detection possible for arbitrary text), split on blank lines.
+    var customParas = text.split(/\n\s*\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+    BOOK_BODY_PARAS.length = 0;
+    Array.prototype.push.apply(BOOK_BODY_PARAS, customParas);
+    Object.keys(HEADINGS_SET).forEach(function(k){ delete HEADINGS_SET[k]; });
+    Object.keys(SUBTITLES_SET).forEach(function(k){ delete SUBTITLES_SET[k]; });
+    // If this text still exactly matches what came straight from a .docx
+    // upload (i.e. the user didn't edit it afterwards), carry its Word
+    // heading structure over so chapters still start on a new page and
+    // read with heading styling, instead of every paragraph looking the same.
+    if (pendingDocxStructure && pendingDocxStructure.length === customParas.length &&
+        pendingDocxStructure.every(function(s, i){ return s.text === customParas[i]; })){
+      pendingDocxStructure.forEach(function(s){
+        if (s.kind === "heading") HEADINGS_SET[s.text] = true;
+        else if (s.kind === "subtitle") SUBTITLES_SET[s.text] = true;
+      });
+    }
+    state.current = 0;
+    modalBackdrop.classList.remove("open");
+    paginate();
+    renderStatic();
+  });
+  modalBackdrop.addEventListener("click", function(e){
+    if (e.target === modalBackdrop) modalBackdrop.classList.remove("open");
+  });
+
+  // ---------- Access gate ----------
+  var lockScreen = $("lockScreen");
+  var lockInput = $("lockInput");
+  var lockError = $("lockError");
+  var unlockBtn = $("unlockBtn");
+  var lockDevNote = $("lockDevNote");
+  $("lockBuyLink").href = BUY_PAGE_URL;
+
+  function grantAccess(){ lockScreen.style.display = "none"; }
+
+  function attemptUnlock(key){
+    lockError.textContent = "";
+    unlockBtn.disabled = true;
+    unlockBtn.textContent = "Checking…";
+    fetch(ACCESS_CHECK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ license_key: key })
+    }).then(function(res){ return res.json(); })
+      .then(function(data){
+        unlockBtn.disabled = false;
+        unlockBtn.textContent = "Unlock my book";
+        if (data && data.valid){
+          try { localStorage.setItem(STORAGE_KEY, key); } catch(e){}
+          grantAccess();
+        } else {
+          lockError.textContent = "That key doesn't look right — check for typos, or use the key from your purchase email.";
+        }
+      })
+      .catch(function(){
+        unlockBtn.disabled = false;
+        unlockBtn.textContent = "Unlock my book";
+        lockError.textContent = "Couldn't reach the access check right now. Please try again in a moment.";
+      });
+  }
+  unlockBtn.addEventListener("click", function(){
+    var key = lockInput.value.trim();
+    if (!key){ lockError.textContent = "Enter your access key first."; return; }
+    attemptUnlock(key);
+  });
+  lockInput.addEventListener("keydown", function(e){ if (e.key === "Enter") unlockBtn.click(); });
+
+  (function initGate(){
+    if (DEV_MODE){
+      lockDevNote.style.display = "block";
+      lockDevNote.textContent = "Dev mode: no worker URL is set yet, so this screen isn't gating anything.";
+      grantAccess();
+      return;
+    }
+    var stored = null;
+    try { stored = localStorage.getItem(STORAGE_KEY); } catch(e){}
+    if (stored){ grantAccess(); return; }
+    var urlKey = new URLSearchParams(window.location.search).get("key");
+    if (urlKey){
+      lockInput.value = urlKey;
+      attemptUnlock(urlKey);
+    }
+  })();
+
+  // ---------- Init ----------
+  $("brandTitle").textContent = state.title;
+  if (!window.speechSynthesis){ narrateBtn.style.display = "none"; if (voiceSettingsBtn) voiceSettingsBtn.style.display = "none"; }
+  setPageCount(2);
+  rescale();
+  updateZoomChrome();
+
+  // Wait for the actual book fonts to finish loading (and for the browser to
+  // have actually painted with them, not just resolved the load promise)
+  // before measuring pages. Pagination run too early, or against a font that
+  // hasn't visually taken effect yet, locks in wrong measurements — this is
+  // a known source of unreliable pagination, especially in mobile WebViews.
+  loadingNote.style.display = "block";
+
+  function runPaginationWhenReady(){
+    function afterTwoFrames(cb){
+      requestAnimationFrame(function(){ requestAnimationFrame(cb); });
+    }
+    afterTwoFrames(function(){
+      paginate();
+      renderStatic();
+    });
+  }
+
+  if (document.fonts && document.fonts.load){
+    Promise.all([
+      document.fonts.load('400 15px "Libre Caslon Text"'),
+      document.fonts.load('700 15px "Libre Caslon Text"'),
+      document.fonts.load('italic 400 15px "Libre Caslon Text"')
+    ]).catch(function(){ /* fall through even if a variant fails to load */ })
+      .then(function(){
+        if (document.fonts.ready){
+          document.fonts.ready.then(runPaginationWhenReady);
+        } else {
+          runPaginationWhenReady();
+        }
+      });
+  } else {
+    runPaginationWhenReady();
+  }
+
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(){});
+    });
+  }
+})();
+</script>
+</body>
+</html>
