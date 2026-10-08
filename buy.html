@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Get Vineys Reader</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   body {
@@ -14,54 +14,55 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(ellipse at 50% 30%, #1c1620, #120e15 70%);
+    background: radial-gradient(ellipse at 50% 30%, #eaf5fc, #c9e2f3 70%);
     font-family: 'Inter', sans-serif;
-    color: #ece1d4;
+    color: #17293c;
     padding: 20px;
   }
   .card {
     width: min(420px, 100%);
-    background: linear-gradient(160deg, #3a1f22, #2a1518);
-    border-radius: 8px;
+    background: linear-gradient(160deg, #4f8fc4, #0e2740);
+    border-radius: 14px;
     padding: 38px 30px;
-    box-shadow: 0 30px 70px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(199,154,75,0.25);
+    box-shadow: 0 30px 70px rgba(10,30,50,0.45), inset 0 0 0 1px rgba(199,154,75,0.3);
     text-align: center;
   }
   h1 {
-    font-family: 'Fraunces', serif;
+    font-family: 'Libre Caslon Text', serif;
     font-style: italic;
     font-weight: 600;
-    color: #c79a4b;
+    color: #e9cf99;
     font-size: 24px;
     margin: 0 0 8px;
   }
   p {
     font-size: 13.5px;
     line-height: 1.6;
-    color: #c9beb2;
+    color: #dcecf8;
     margin: 0 0 22px;
   }
   input[type="email"] {
     width: 100%;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.18);
-    color: #ece1d4;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #f8fcff;
     padding: 12px 14px;
-    border-radius: 4px;
+    border-radius: 6px;
     font-family: 'Inter', sans-serif;
     font-size: 14px;
   }
+  input[type="email"]::placeholder { color: rgba(248,252,255,0.55); }
   input[type="email"]:focus-visible { outline: 2px solid #c79a4b; outline-offset: 2px; }
   .price {
-    font-family: 'Fraunces', serif;
+    font-family: 'Libre Caslon Text', serif;
     font-size: 30px;
-    color: #f0e6d2;
+    color: #f8fcff;
     margin: 18px 0 22px;
   }
   .price span {
     font-family: 'Inter', sans-serif;
     font-size: 12px;
-    color: #b9aea3;
+    color: #a8cbe6;
     display: block;
     margin-top: 4px;
     letter-spacing: 0.04em;
@@ -70,10 +71,10 @@
     width: 100%;
     margin-top: 14px;
     background: #c79a4b;
-    color: #241c22;
+    color: #17293c;
     border: none;
     padding: 13px 12px;
-    border-radius: 4px;
+    border-radius: 6px;
     font-family: 'Inter', sans-serif;
     font-weight: 600;
     font-size: 14px;
@@ -84,13 +85,13 @@
   button:disabled { opacity: 0.6; cursor: default; }
   .err {
     font-size: 12px;
-    color: #e2897f;
+    color: #ffb3a8;
     margin-top: 10px;
     min-height: 16px;
   }
   .fineprint {
     font-size: 11px;
-    color: #8a8078;
+    color: #a8cbe6;
     margin-top: 22px;
     line-height: 1.5;
   }
