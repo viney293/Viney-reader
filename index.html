@@ -280,10 +280,6 @@
   .zone { position:absolute; top:0; height:100%; width:34%; z-index:60; cursor:pointer; }
   .zone.prev { left:0; }
   .zone.next { right:0; }
-  .zone { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
-  ::highlight(readfrom) { background: rgba(255,190,0,.55); color: inherit; }
-  .read-note { position:fixed; left:50%; bottom:84px; transform:translateX(-50%); max-width:88vw; background:rgba(20,30,60,.93); color:#fff; padding:10px 16px; border-radius:12px; font:14px/1.4 system-ui,sans-serif; z-index:9999; opacity:0; pointer-events:none; transition:opacity .2s; text-align:center; }
-  .read-note.show { opacity:1; }
 
   .nav-btn {
     position:absolute; bottom:12px; z-index:70;
@@ -1703,7 +1699,7 @@
     var cls = "";
     if (isHeading(text)) cls = ' class="chapter-heading"';
     else if (isSubtitle(text)) cls = ' class="subtitle-heading"';
-    return "<p" + cls + ' data-i="' + seg.i + '" data-a="' + seg.a + '">' + escapeHtml(segText(seg)) + "</p>";
+    return "<p" + cls + ">" + escapeHtml(segText(seg)) + "</p>";
   }
 
   function paginate(){
@@ -1869,7 +1865,7 @@
   // from cutting long passages off, and lets Pause / Resume pick up at the
   // sentence you stopped on.
   var NARRATOR_KEY = "vineys_voice_narrator", DIALOGUE_KEY = "vineys_voice_dialogue";
-  var narration = { active: false, paused: false, chunks: [], idx: 0, sub: 0, token: 0, settings: null, preview: false, viewCur: 0, more: true };
+  var narration = { active: false, paused: false, chunks: [], idx: 0, token: 0, settings: null, preview: false };
   var narrateBtn = $("narrateBtn"), pauseBtn = $("pauseBtn");
   var hasSpeech = !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
 
@@ -1964,42 +1960,27 @@
     flush();
     return chunks;
   }
-  function buildChunksForPage(pg, anchor, ctx){
+  function buildChunksForPage(pg){
     if (!pg) return [];
-    var skipping = !!anchor && !ctx.started;
-    if (pg.type === "cover"){
-      if (skipping) return [];
-      return [{ text: state.title + ".", dialogue: false }];
-    }
+    if (pg.type === "cover") return [{ text: state.title + ".", dialogue: false }];
     if (pg.type === "title"){
-      if (skipping) return [];
       var parts = [state.title];
       if (state.subtitle) parts.push(state.subtitle);
       if (state.author) parts.push("By " + state.author);
       return parts.map(function(t){ return { text: /[.!?]$/.test(t) ? t : t + ".", dialogue: false }; });
     }
-    if (pg.type === "end"){
-      if (skipping) return [];
-      return [{ text: "The End.", dialogue: false }];
-    }
+    if (pg.type === "end") return [{ text: "The End.", dialogue: false }];
     if (pg.type === "frontispiece"){
-      if (skipping) return [];
       var fv = [];
       FRONTISPIECE_VERSES.forEach(function(v){ splitSentences(v).forEach(function(x){ fv.push({ text: x, dialogue: false }); }); });
       return fv;
     }
     var out = [];
     pg.segs.forEach(function(sg){
-      var from = sg.a;
-      if (anchor && !ctx.started){
-        if (sg.i === anchor.i && anchor.a >= sg.a && anchor.a < sg.b){ ctx.started = true; from = anchor.a; }
-        else return;
-      }
-      var w = wordsOf(sg.i);
-      var t = (from === sg.a) ? segText(sg) : w.slice(from, sg.b).join(" ");
+      var t = segText(sg);
       var startQ = false;
-      if (from > 0){
-        var prior = w.slice(0, from).join(" ");
+      if (sg.a > 0){
+        var prior = wordsOf(sg.i).slice(0, sg.a).join(" ");
         startQ = ((prior.match(/\u201c/g) || []).length - (prior.match(/\u201d/g) || []).length) > 0;
       }
       if (isHeading(BOOK_BODY_PARAS[sg.i]) || isSubtitle(BOOK_BODY_PARAS[sg.i])){
@@ -2009,19 +1990,16 @@
     });
     return out;
   }
-  // Everything in one view: one page, or both pages of a spread (left
-  // first, then right). With an anchor, reading starts at that word.
-  function buildChunksForViewAt(cur, anchor){
-    var pgs;
-    if (state.pageCount === 1) pgs = [state.pages[cur]];
-    else { var pair = getDisplayedPair(cur); pgs = [pair.left, pair.right]; }
-    if (anchor && !viewContainsAnchor(anchor)) anchor = null;
-    var ctx = { started: !anchor }, out = [];
-    pgs.forEach(function(pg){ out = out.concat(buildChunksForPage(pg, anchor, ctx)); });
-    out.forEach(function(c){ c.v = cur; });
+  // Everything the reader can currently see: one page, or both pages of a
+  // spread (left first, then right).
+  function buildChunksForView(){
+    var pgs = state.pageCount === 1 ? [state.pages[state.current]] : (function(){
+      var pair = getDisplayedPair(state.current); return [pair.left, pair.right];
+    })();
+    var out = [];
+    pgs.forEach(function(pg){ out = out.concat(buildChunksForPage(pg)); });
     return out;
   }
-  function buildChunksForView(){ return buildChunksForViewAt(state.current, null); }
 
   // ----- speaking -----
   function updateNarrationButtons(){
@@ -2052,36 +2030,26 @@
     updateNarrationButtons();
   }
 
-  // Speech is queued a few sentences ahead (and across page turns), so the
-  // voice engine never stops and restarts between sentences or paragraphs.
-  var AHEAD = 3;
-
-  function extendChunks(){
-    var guard = 0;
-    while (narration.more && guard++ < 6){
-      var t = computeTarget(narration.viewCur, 1, state.pageCount, state.pages.length);
-      if (t === null){ narration.more = false; return false; }
-      narration.viewCur = t;
-      var add = buildChunksForViewAt(t, null);
-      if (add.length){ narration.chunks = narration.chunks.concat(add); return true; }
-    }
-    return false;
+  function finishView(){
+    if (narration.preview){ stopNarration(); return; }
+    var t = computeTarget(state.current, 1, state.pageCount, state.pages.length);
+    if (t === null){ stopNarration(); return; }
+    state.current = t;
+    renderStatic();
+    narration.chunks = buildChunksForView();
+    narration.idx = 0;
+    speakChunk();
   }
 
-  function submitChunk(i){
-    var tok = narration.token;
-    var ch = narration.chunks[i];
-    var u = utteranceFor(ch, narration.settings);
-    u.onstart = function(){
-      if (tok !== narration.token) return;
-      narration.idx = i;
-      if (!narration.preview && ch.v !== undefined && ch.v !== state.current){ state.current = ch.v; renderStatic(); }
-      pump();
-    };
+  function speakChunk(){
+    if (!narration.active || narration.paused) return;
+    if (narration.idx >= narration.chunks.length){ finishView(); return; }
+    var tok = ++narration.token;
+    var u = utteranceFor(narration.chunks[narration.idx], narration.settings);
     u.onend = function(){
       if (tok !== narration.token || !narration.active || narration.paused) return;
-      if (narration.idx < i + 1) narration.idx = i + 1;
-      pump();
+      narration.idx++;
+      speakChunk();
     };
     u.onerror = function(e){
       if (tok !== narration.token) return;
@@ -2091,20 +2059,6 @@
     try { window.speechSynthesis.speak(u); } catch(e){ stopNarration(); }
   }
 
-  function pump(){
-    while (narration.active && !narration.paused){
-      if (narration.sub - narration.idx >= AHEAD) return;
-      if (narration.sub >= narration.chunks.length){
-        if (narration.preview || !narration.more || !extendChunks()) break;
-        continue;
-      }
-      submitChunk(narration.sub++);
-    }
-    if (narration.active && !narration.paused &&
-        narration.sub >= narration.chunks.length && narration.idx >= narration.chunks.length &&
-        (narration.preview || !narration.more)) stopNarration();
-  }
-
   function beginSpeaking(chunks, settings, isPreview){
     if (!hasSpeech) return;
     try { window.speechSynthesis.cancel(); } catch(e){}
@@ -2112,14 +2066,11 @@
     narration.settings = settings;
     narration.chunks = chunks;
     narration.idx = 0;
-    narration.sub = 0;
-    narration.viewCur = state.current;
-    narration.more = !isPreview;
     narration.active = true;
     narration.paused = false;
     narration.preview = !!isPreview;
     updateNarrationButtons();
-    setTimeout(pump, 80);
+    setTimeout(speakChunk, 80);
   }
 
   function pauseNarration(){
@@ -2132,121 +2083,17 @@
   function resumeNarration(){
     if (!narration.active || !narration.paused) return;
     narration.paused = false;
-    narration.sub = narration.idx;
     updateNarrationButtons();
-    setTimeout(pump, 60);
+    setTimeout(speakChunk, 60);
   }
+
+  narrateBtn.addEventListener("click", function(){
+    if (narration.active) stopNarration();
+    else beginSpeaking(buildChunksForView(), loadVoiceSettings(), false);
+  });
   pauseBtn.addEventListener("click", function(){
     if (narration.paused) resumeNarration(); else pauseNarration();
   });
-
-  // ---------- Start reading where the reader puts the cursor ----------
-  // Press and hold on any word (finger or mouse), or select some text, and
-  // Read aloud starts from there. Holding a word while it is already
-  // reading jumps the voice to that spot.
-  var readFrom = null, noteEl = null, noteTimer = null, holdState = null, suppressClick = false;
-
-  function showNote(msg){
-    if (!noteEl){ noteEl = document.createElement("div"); noteEl.className = "read-note"; document.body.appendChild(noteEl); }
-    noteEl.textContent = msg; noteEl.classList.add("show");
-    clearTimeout(noteTimer);
-    noteTimer = setTimeout(function(){ noteEl.classList.remove("show"); }, 3200);
-  }
-  function clearReadMark(){
-    readFrom = null;
-    try { if (window.CSS && CSS.highlights) CSS.highlights.delete("readfrom"); } catch(e){}
-  }
-  function anchorFromNode(node, off){
-    var el = node && (node.nodeType === 3 ? node.parentNode : node);
-    var p = (el && el.closest) ? el.closest("p[data-i]") : null;
-    if (!p || !p.closest("#underContent, #leftContent")) return null;
-    var a0 = parseInt(p.getAttribute("data-a"), 10), i0 = parseInt(p.getAttribute("data-i"), 10);
-    var text = p.textContent, w = 0, s0 = 0, e0;
-    if (node.nodeType === 3 && node.parentNode === p){
-      var o = Math.max(0, Math.min(off, text.length));
-      w = (text.slice(0, o).match(/ /g) || []).length;
-      s0 = o > 0 ? text.lastIndexOf(" ", o - 1) + 1 : 0;
-      var sp = text.indexOf(" ", o); e0 = sp < 0 ? text.length : sp;
-    } else { e0 = text.indexOf(" "); if (e0 < 0) e0 = text.length; }
-    return { i: i0, a: a0 + w, p: p, s: s0, e: e0 };
-  }
-  function anchorAtPoint(x, y){
-    var zones = document.querySelectorAll(".zone"), k, node = null, off = 0;
-    for (k = 0; k < zones.length; k++) zones[k].style.pointerEvents = "none";
-    try {
-      if (document.caretPositionFromPoint){
-        var cp = document.caretPositionFromPoint(x, y); if (cp){ node = cp.offsetNode; off = cp.offset; }
-      } else if (document.caretRangeFromPoint){
-        var r = document.caretRangeFromPoint(x, y); if (r){ node = r.startContainer; off = r.startOffset; }
-      }
-    } catch(e){}
-    for (k = 0; k < zones.length; k++) zones[k].style.pointerEvents = "";
-    return anchorFromNode(node, off);
-  }
-  function selectionAnchor(){
-    try {
-      var sel = window.getSelection();
-      if (!sel || !sel.rangeCount || sel.isCollapsed) return null;
-      var r = sel.getRangeAt(0);
-      return anchorFromNode(r.startContainer, r.startOffset);
-    } catch(e){ return null; }
-  }
-  function placeCursor(x, y){
-    var an = anchorAtPoint(x, y);
-    if (!an){ showNote("Press and hold on a word of the text to read from there."); return; }
-    var snippet = wordsOf(an.i).slice(an.a, an.a + 5).join(" ");
-    if (narration.active && !narration.preview){
-      beginSpeaking(buildChunksForViewAt(state.current, an), narration.settings, false);
-      showNote("Reading from \u201c" + snippet + "\u2026\u201d");
-      return;
-    }
-    clearReadMark();
-    readFrom = { i: an.i, a: an.a };
-    try {
-      if (window.CSS && CSS.highlights && window.Highlight){
-        var rg = document.createRange();
-        rg.setStart(an.p.firstChild, an.s); rg.setEnd(an.p.firstChild, an.e);
-        CSS.highlights.set("readfrom", new Highlight(rg));
-      }
-    } catch(e){}
-    showNote("Will read from \u201c" + snippet + "\u2026\u201d \u2014 now press Read aloud.");
-  }
-
-  narrateBtn.title = "Read aloud (press and hold a word first to start from there)";
-  narrateBtn.addEventListener("click", function(){
-    if (narration.active){ stopNarration(); return; }
-    var an = selectionAnchor() || readFrom;
-    if (an && !viewContainsAnchor(an)) an = null;
-    var chunks = buildChunksForViewAt(state.current, an);
-    if (!chunks.length) chunks = buildChunksForViewAt(state.current, null);
-    clearReadMark();
-    try { window.getSelection().removeAllRanges(); } catch(e){}
-    beginSpeaking(chunks, loadVoiceSettings(), false);
-  });
-
-  (function wireHold(){
-    var st = document.querySelector(".stage");
-    if (!st) return;
-    function cancelHold(){ if (holdState){ clearTimeout(holdState.t); holdState = null; } }
-    st.addEventListener("pointerdown", function(e){
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      if (e.target.closest && e.target.closest("button, a, input, select")) return;
-      cancelHold();
-      var h = { x: e.clientX, y: e.clientY, fired: false };
-      h.t = setTimeout(function(){ h.fired = true; suppressClick = true; placeCursor(h.x, h.y); }, 480);
-      holdState = h;
-    });
-    st.addEventListener("pointermove", function(e){
-      if (holdState && !holdState.fired && Math.abs(e.clientX - holdState.x) + Math.abs(e.clientY - holdState.y) > 12) cancelHold();
-    });
-    var endHold = function(){
-      if (holdState && !holdState.fired) cancelHold(); else holdState = null;
-      if (suppressClick) setTimeout(function(){ suppressClick = false; }, 350);
-    };
-    st.addEventListener("pointerup", endHold);
-    st.addEventListener("pointercancel", endHold);
-    st.addEventListener("contextmenu", function(e){ if (suppressClick) e.preventDefault(); });
-  })();
 
   // ---------- Voice settings modal ----------
   var voiceSettingsBtn = $("voiceSettingsBtn");
@@ -2357,7 +2204,6 @@
 
   // ---------- Render (static, no animation) ----------
   function renderStatic(){
-    clearReadMark();
     var pages = state.pages;
     var cur = state.current;
 
@@ -2722,7 +2568,6 @@
   $("prevBtn").addEventListener("click", goPrev);
   function zoneClick(handler){
     return function(){
-      if (suppressClick){ suppressClick = false; return; }
       if (window.getSelection().toString().length > 0) return;
       handler();
     };
