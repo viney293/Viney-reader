@@ -1,7 +1,7 @@
 // Vineys Reader — service worker
 // Caches the app shell so it installs as an app and works offline.
 
-var CACHE_NAME = "vineys-reader-v22";
+var CACHE_NAME = "vineys-reader-v24";
 var ASSETS = [
   "./",
   "./index.html",
@@ -33,6 +33,13 @@ self.addEventListener("activate", function(event){
 
 self.addEventListener("fetch", function(event){
   if (event.request.method !== "GET") return;
+  // The list of valid access keys must always be fresh, never cached.
+  if (new URL(event.request.url).pathname.slice(-9) === "keys.json"){
+    event.respondWith(fetch(event.request).catch(function(){
+      return new Response('{"v":1,"hashes":[]}', { headers: { "Content-Type": "application/json" } });
+    }));
+    return;
+  }
   event.respondWith(
     caches.match(event.request).then(function(cached){
       if (cached) return cached;

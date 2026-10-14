@@ -502,7 +502,7 @@
       <input type="text" id="lockInput" placeholder="ACCESS KEY" autocomplete="off" autocapitalize="characters" spellcheck="false">
       <button class="unlock-btn" id="unlockBtn">Unlock my book</button>
       <div class="lock-error" id="lockError"></div>
-      <a class="lock-buy-link" id="lockBuyLink" href="#" target="_blank" rel="noopener">Don't have a key yet? Get your copy</a>
+      <a class="lock-buy-link" id="lockBuyLink" href="#">Don't have a key yet? Get your copy</a>
       <div class="lock-dev-note" id="lockDevNote" style="display:none;"></div>
     </div>
   </div>
@@ -2764,30 +2764,60 @@
 
   function grantAccess(){ lockScreen.style.display = "none"; }
 
-  function attemptUnlock(key){
-    lockError.textContent = "";
-    unlockBtn.disabled = true;
-    unlockBtn.textContent = "Checking\u2026";
+  // Keys you issue yourself (for EFT / Capitec sales) are checked against
+  // keys.json, which holds only fingerprints (SHA-256 hashes) of the valid
+  // keys, never the keys themselves. Keys that aren't found there are
+  // passed to the online payment service as before.
+  function normKey(k){ return k.toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+  function sha256Hex(str){
+    if (!(window.crypto && window.crypto.subtle && window.TextEncoder)) return Promise.reject(new Error("no-crypto"));
+    return window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(str)).then(function(buf){
+      return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ("0" + b.toString(16)).slice(-2); }).join("");
+    });
+  }
+  function checkLocalKey(key){
+    return sha256Hex("vineys:" + normKey(key)).then(function(h){
+      return fetch("keys.json", { cache: "no-store" })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(data){
+          var list = data && (data.hashes || data);
+          return !!(list && typeof list.indexOf === "function" && list.indexOf(h) !== -1);
+        });
+    }).catch(function(){ return false; });
+  }
+  function unlockSucceeded(key){
+    unlockBtn.disabled = false;
+    unlockBtn.textContent = "Unlock my book";
+    try { localStorage.setItem(STORAGE_KEY, key); } catch(e){}
+    grantAccess();
+  }
+  function askPaymentService(key){
     fetch(ACCESS_CHECK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ license_key: key })
     }).then(function(res){ return res.json(); })
       .then(function(data){
+        if (data && data.valid){ unlockSucceeded(key); return; }
         unlockBtn.disabled = false;
         unlockBtn.textContent = "Unlock my book";
-        if (data && data.valid){
-          try { localStorage.setItem(STORAGE_KEY, key); } catch(e){}
-          grantAccess();
-        } else {
-          lockError.textContent = "That key doesn't look right \u2014 check for typos, or use the key from your purchase email.";
-        }
+        lockError.textContent = "That key doesn't look right \u2014 check for typos, or use the key you were sent.";
       })
       .catch(function(){
         unlockBtn.disabled = false;
         unlockBtn.textContent = "Unlock my book";
-        lockError.textContent = "Couldn't reach the access check right now. Please try again in a moment.";
+        lockError.textContent = "That key wasn't recognised, and the online check couldn't be reached. Check the key for typos or try again in a moment.";
       });
+  }
+
+  function attemptUnlock(key){
+    lockError.textContent = "";
+    unlockBtn.disabled = true;
+    unlockBtn.textContent = "Checking\u2026";
+    checkLocalKey(key).then(function(localOk){
+      if (localOk) unlockSucceeded(key);
+      else askPaymentService(key);
+    });
   }
   unlockBtn.addEventListener("click", function(){
     var key = lockInput.value.trim();
