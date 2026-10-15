@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get Vineys Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 50% 30%, #eaf5fc, #c9e2f3 70%);
+    font-family: 'Inter', sans-serif;
+    color: #17293c;
+    padding: 20px;
+  }
+  .card {
+    width: min(420px, 100%);
+    background: linear-gradient(160deg, #4f8fc4, #0e2740);
+    border-radius: 14px;
+    padding: 38px 30px;
+    box-shadow: 0 30px 70px rgba(10,30,50,0.45), inset 0 0 0 1px rgba(199,154,75,0.3);
+    text-align: center;
+  }
+  h1 {
+    font-family: 'Libre Caslon Text', serif;
+    font-style: italic;
+    font-weight: 600;
+    color: #e9cf99;
+    font-size: 24px;
+    margin: 0 0 8px;
+  }
+  p {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: #dcecf8;
+    margin: 0 0 22px;
+  }
+  input[type="email"] {
+    width: 100%;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #f8fcff;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+  }
+  input[type="email"]::placeholder { color: rgba(248,252,255,0.55); }
+  input[type="email"]:focus-visible { outline: 2px solid #c79a4b; outline-offset: 2px; }
+  .price {
+    font-family: 'Libre Caslon Text', serif;
+    font-size: 30px;
+    color: #f8fcff;
+    margin: 18px 0 22px;
+  }
+  .price span {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: #a8cbe6;
+    display: block;
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+  }
+  button {
+    width: 100%;
+    margin-top: 14px;
+    background: #c79a4b;
+    color: #17293c;
+    border: none;
+    padding: 13px 12px;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+  }
+  button:hover { background: #d9ab5c; }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .err {
+    font-size: 12px;
+    color: #ffb3a8;
+    margin-top: 10px;
+    min-height: 16px;
+  }
+  .eft { text-align:left; background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:10px; padding:16px 16px 14px; margin-top:6px; }
+  .eft h2 { font-family:'Libre Caslon Text', serif; font-size:17px; color:#e9cf99; margin:0 0 10px; font-weight:600; }
+  .eft dl { margin:0 0 10px; display:grid; grid-template-columns:auto 1fr; gap:6px 12px; font-size:13.5px; }
+  .eft dt { color:#a8cbe6; }
+  .eft dd { margin:0; color:#f8fcff; font-weight:600; word-break:break-word; }
+  .eft ol { margin:8px 0 12px; padding-left:20px; font-size:13px; line-height:1.55; color:#dcecf8; }
+  .eft a.wa { display:block; text-align:center; background:#c79a4b; color:#17293c; text-decoration:none; font-weight:600; font-size:14px; padding:12px; border-radius:6px; }
+  .eft a.wa:hover { background:#d9ab5c; }
+  .eft .keynote { font-size:12.5px; line-height:1.5; color:#e9cf99; margin:0 0 14px; }
+  .divider { font-size:12px; color:#a8cbe6; margin:18px 0 4px; }
+  .fineprint {
+    font-size: 11px;
+    color: #a8cbe6;
+    margin-top: 22px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1 id="bookTitle">The Coloured Bible</h1>
+    <p>Get instant access in Vineys Reader. Pay securely via PayFast, then read straight away.</p>
+    <div class="price" id="priceDisplay">R150<span>once-off, ZAR</span></div>
+    <div id="payfastBlock">
+      <input type="email" id="emailInput" placeholder="you@example.com" autocomplete="email">
+      <button id="payBtn">Pay with PayFast</button>
+      <div class="err" id="errMsg"></div>
+      <div class="fineprint">You'll get a personal access key immediately after payment — enter it in Vineys Reader to start reading. Payment is processed by PayFast; card and account details never pass through this site.</div>
+    </div>
+    <div class="divider" id="orDivider" style="display:none;">&mdash; or &mdash;</div>
+    <div class="eft" id="eftBlock" style="display:none;">
+      <h2>Pay by EFT or Capitec</h2>
+      <dl id="eftDetails"></dl>
+      <ol>
+        <li>Pay <b id="eftAmount"></b> into the account above. Use your name as the reference.</li>
+        <li>Send your proof of payment on WhatsApp.</li>
+        <li>You'll be sent your personal access key to read straight away.</li>
+      </ol>
+      <p class="keynote">Your access key is personal to you. It is not to be shared and cannot be transferred to anyone else.</p>
+      <a class="wa" id="waLink" href="#" target="_blank" rel="noopener" style="display:none;">Send proof of payment on WhatsApp</a>
+    </div>
+    <div id="noPayment" style="display:none;"><p>Payments are being set up &mdash; please check back soon.</p></div>
+  </div>
+
+<script>
+  // ---- Configure these two before publishing ----
+  var WORKER_URL = "https://viney-payment.viney293.workers.dev"; // your deployed payfast-worker.js
+  // Price and title shown above are cosmetic only — the real, authoritative
+  // price is whatever BOOK_PRICE_ZAR is set to in the Worker's environment
+  // variables. Keep these two in sync by hand.
+  document.getElementById("bookTitle").textContent = "The Coloured Bible";
+  document.getElementById("priceDisplay").innerHTML = "R150<span>once-off, ZAR</span>";
+
+  // ---- Payment options ----
+  // PayFast: leave false until PayFast has verified your account, otherwise
+  // buyers reach a PayFast error page. Set to true once you're approved.
+  var PAYFAST_ENABLED = false;
+  // EFT / Capitec: fill these in. Anything left empty is simply not shown.
+  var EFT = {
+    bankName: "Capitec",
+    accountName: "V. Hendricks",
+    accountNumber: "1122160397",
+    branchCode: "470010",   // Capitec's universal branch code
+    accountType: "",     // e.g. "Savings"
+    whatsapp: "27734296001"
+  };
+  var PRICE_TEXT = "R150";
+
+  (function setupOptions(){
+    var hasEft = !!EFT.accountNumber;
+    document.getElementById("payfastBlock").style.display = PAYFAST_ENABLED ? "" : "none";
+    if (hasEft){
+      var rows = [["Bank", EFT.bankName], ["Account name", EFT.accountName], ["Account number", EFT.accountNumber],
+                  ["Branch code", EFT.branchCode], ["Account type", EFT.accountType]];
+      var dl = document.getElementById("eftDetails");
+      rows.forEach(function(r){
+        if (!r[1]) return;
+        var dt = document.createElement("dt"); dt.textContent = r[0];
+        var dd = document.createElement("dd"); dd.textContent = r[1];
+        dl.appendChild(dt); dl.appendChild(dd);
+      });
+      document.getElementById("eftAmount").textContent = PRICE_TEXT;
+      document.getElementById("eftBlock").style.display = "";
+      var digits = (EFT.whatsapp || "").replace(/\D/g, "");
+      if (digits){
+        var wa = document.getElementById("waLink");
+        wa.href = "https://wa.me/" + digits + "?text=" + encodeURIComponent("Hi, I've paid " + PRICE_TEXT + " for The Coloured Bible. My name is ");
+        wa.style.display = "block";
+      }
+    }
+    document.getElementById("orDivider").style.display = (PAYFAST_ENABLED && hasEft) ? "" : "none";
+    document.getElementById("noPayment").style.display = (!PAYFAST_ENABLED && !hasEft) ? "" : "none";
+  })();
+
+  var payBtn = document.getElementById("payBtn");
+  var emailInput = document.getElementById("emailInput");
+  var errMsg = document.getElementById("errMsg");
+
+  payBtn.addEventListener("click", function(){
+    var email = emailInput.value.trim();
+    errMsg.textContent = "";
+    if (!email || email.indexOf("@") === -1){
+      errMsg.textContent = "Enter a valid email — that's where your key goes if you close this tab.";
+      return;
+    }
+    if (WORKER_URL.indexOf("YOUR-WORKER-SUBDOMAIN") !== -1){
+      errMsg.textContent = "Payment isn't wired up yet — set WORKER_URL in this page first.";
+      return;
+    }
+    payBtn.disabled = true;
+    payBtn.textContent = "Redirecting…";
+    window.location.href = WORKER_URL + "/start-payment?email=" + encodeURIComponent(email);
+  });
+
+  // If the person comes back from a failed payment page with the Back
+  // button, the browser may restore this page with the button still stuck
+  // on "Redirecting…". Reset it so they can try again.
+  window.addEventListener("pageshow", function(){
+    payBtn.disabled = false;
+    payBtn.textContent = "Pay with PayFast";
+  });
+
+  emailInput.addEventListener("keydown", function(e){
+    if (e.key === "Enter") payBtn.click();
+  });
+</script>
+</body>
+</html>
