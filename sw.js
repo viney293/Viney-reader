@@ -1,7 +1,7 @@
 // Vineys Reader — service worker
 // Caches the app shell so it installs as an app and works offline.
 
-var CACHE_NAME = "vineys-reader-v24";
+var CACHE_NAME = "vineys-reader-v26";
 var ASSETS = [
   "./",
   "./index.html",
@@ -17,7 +17,8 @@ var ASSETS = [
 self.addEventListener("install", function(event){
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache){
-      return cache.addAll(ASSETS);
+      // Add files one by one so a single missing file can't stop the whole install.
+      return Promise.all(ASSETS.map(function(a){ return cache.add(a).catch(function(){}); }));
     }).then(function(){ return self.skipWaiting(); })
   );
 });
@@ -37,6 +38,18 @@ self.addEventListener("fetch", function(event){
   if (new URL(event.request.url).pathname.slice(-9) === "keys.json"){
     event.respondWith(fetch(event.request).catch(function(){
       return new Response('{"v":1,"hashes":[]}', { headers: { "Content-Type": "application/json" } });
+    }));
+    return;
+  }
+  // Pages load from the network first, so updates reach people straight away;
+  // the saved copy is only used when they are offline.
+  if (event.request.mode === "navigate"){
+    event.respondWith(fetch(event.request).then(function(response){
+      var copy = response.clone();
+      caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
+      return response;
+    }).catch(function(){
+      return caches.match(event.request).then(function(r){ return r || caches.match("./index.html"); });
     }));
     return;
   }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vineys Reader</title>
 <meta name="description" content="Vineys Reader — a page-turning book reader.">
-<meta name="theme-color" content="#123a56">
+<meta name="theme-color" content="#1b2a5e">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
@@ -14,18 +14,24 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Vineys Reader">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,700;1,600;1,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --stage-bg-1: #eaf5fc;
-    --stage-bg-2: #c9e2f3;
-    --case-1: #4f8fc4;
-    --case-2: #0e2740;
-    --accent: #15486c;
-    --accent-light: #2f74a3;
-    --paper: #f8fcff;
-    --ink: #17293c;
-    --ribbon: #0e2740;
+    --stage-bg-1: #f8f3fc;
+    --stage-bg-2: #d3e2f6;
+    --case-1: #4a7fc1;
+    --case-2: #1b2a5e;
+    --accent: #1f4a86;
+    --accent-light: #3d73b8;
+    --rose: #c4577f;
+    --rose-deep: #a23d69;
+    --paper: #fffdfa;
+    --ink: #1e2a45;
+    --ribbon: #c4577f;
+    --line: #cdd7ec;
+    --btn-bg: #f9f7fd;
+    --btn-hover: #ece7f8;
+    --muted: #5d6c92;
     --gold: #c79a4b;
     --gold-dark: #8a6444;
     --gold-pale: #e9cf99;
@@ -38,6 +44,9 @@
     --pad-x: 38px;
     --pad-top: 42px;
     --pad-bottom: 48px;
+    --frame-x: 28px;
+    --frame-y: 24px;
+    --rail-w: 64px;
   }
 
   * { box-sizing: border-box; }
@@ -58,46 +67,46 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    padding-right: var(--rail-w);
   }
   .stage.zoomed {
     overflow: auto;
     align-items: flex-start;
     justify-content: flex-start;
-    padding: 60px;
+    padding: 24px calc(var(--rail-w) + 16px) 24px 24px;
   }
 
-  /* ---------- Top chrome ---------- */
-  .topbar {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    row-gap: 10px;
-    padding: 16px 20px;
-    z-index: 50;
+  /* ---------- Side rail (controls sit beside the book) ---------- */
+  .rail {
+    position: fixed; top: 0; right: 0; bottom: 0; width: var(--rail-w);
+    z-index: 50; display: flex; flex-direction: column; align-items: center;
+    gap: 6px; padding: 10px 6px; overflow-y: auto; scrollbar-width: none;
+    background: rgba(255,255,255,0.6);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border-left: 1px solid rgba(255,255,255,0.8);
+    box-shadow: -6px 0 24px rgba(27,42,94,0.08);
   }
-  .brand {
-    font-family: 'Libre Caslon Text', serif;
-    font-weight: 700;
-    color: var(--accent);
-    font-size: 18px;
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
+  .rail::-webkit-scrollbar { display: none; }
+  .rail .sep { flex: 0 0 auto; width: 60%; height: 1px; background: var(--line); margin: 2px 0; }
+  .rail button {
+    flex: 0 0 auto; width: 50px; min-height: 46px; padding: 3px 0;
+    border-radius: 12px; border: 1px solid var(--line); background: var(--btn-bg); color: var(--accent);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font-family: 'Inter', sans-serif; cursor: pointer; touch-action: manipulation;
+    transition: background 0.15s ease, transform 0.1s ease;
   }
-  .brand span.book-title {
-    font-family: 'Inter', sans-serif;
-    font-weight: 400;
-    font-size: 12px;
-    color: #4a7391;
-    letter-spacing: 0.03em;
-  }
-  .topbar-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .rail button .ic { font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+  .rail button .lbl { font-size: 9.5px; font-weight: 600; letter-spacing: 0.02em; line-height: 1; }
+  .rail button:hover { background: var(--btn-hover); }
+  .rail button:active { transform: scale(0.94); }
+  .rail button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .rail button.active { background: var(--rose); border-color: var(--rose); color: #fff; }
+  .rail button:disabled { opacity: 0.4; cursor: default; }
+
+  /* ---------- Buttons used inside pop-up windows ---------- */
   .chrome-btn {
-    background: #f2f9ff;
-    border: 1px solid #a8cbe6;
+    background: var(--btn-bg);
+    border: 1px solid var(--line);
     color: var(--accent);
     font-family: 'Inter', sans-serif;
     font-size: 13px;
@@ -107,18 +116,18 @@
     border-radius: 6px;
     cursor: pointer;
   }
-  .chrome-btn:hover { background: #dff0fb; }
+  .chrome-btn:hover { background: var(--btn-hover); }
   .chrome-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .chrome-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .chrome-btn.active { background: var(--rose); color: #fff; border-color: var(--rose); }
 
   .btn-group {
     display: flex;
-    border: 1px solid #a8cbe6;
+    border: 1px solid var(--line);
     border-radius: 6px;
     overflow: hidden;
   }
   .btn-group button {
-    background: #f2f9ff;
+    background: var(--btn-bg);
     border: none;
     color: var(--accent);
     font-family: 'Inter', sans-serif;
@@ -126,11 +135,11 @@
     font-weight: 600;
     padding: 9px 14px;
     cursor: pointer;
-    border-right: 1px solid #a8cbe6;
+    border-right: 1px solid var(--line);
   }
   .btn-group button:last-child { border-right: none; }
-  .btn-group button:hover { background: #dff0fb; }
-  .btn-group button.active { background: var(--accent); color: #fff; }
+  .btn-group button:hover { background: var(--btn-hover); }
+  .btn-group button.active { background: var(--rose); color: #fff; }
   .btn-group button:disabled { opacity: 0.4; cursor: default; }
 
   /* ---------- The book ---------- */
@@ -138,9 +147,9 @@
 
   .book {
     position: relative;
-    width: calc(var(--page-w) * var(--page-count) + 56px);
-    height: calc(var(--page-h) + 48px);
-    padding: 24px 28px;
+    width: calc(var(--page-w) * var(--page-count) + 2 * var(--frame-x));
+    height: calc(var(--page-h) + 2 * var(--frame-y));
+    padding: var(--frame-y) var(--frame-x);
     background:
       repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 3px),
       linear-gradient(160deg, var(--case-1), var(--case-2));
@@ -155,7 +164,7 @@
     top: 32px;
     bottom: 32px;
     width: 6px;
-    background: repeating-linear-gradient(to bottom, #e7f1fa 0px, #e7f1fa 2px, #bcd8ec 2px, #bcd8ec 3px);
+    background: repeating-linear-gradient(to bottom, #f4effa 0px, #f4effa 2px, #d6d0ea 2px, #d6d0ea 3px);
     box-shadow: inset 0 0 4px rgba(10,30,50,0.35);
     z-index: 5;
     pointer-events: none;
@@ -167,8 +176,8 @@
   .spine {
     position: absolute;
     left: 50%;
-    top: 24px;
-    bottom: 24px;
+    top: var(--frame-y);
+    bottom: var(--frame-y);
     width: 22px;
     transform: translateX(-50%);
     background:
@@ -253,7 +262,11 @@
     font-size: 1.25em;
     margin-bottom: 0.9em;
     text-indent: 0;
-    color: var(--accent);
+    color: var(--rose-deep);
+  }
+  .page-content p.chapter-heading::after {
+    content: ""; display: block; width: 56px; height: 2px; margin-top: 10px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--rose), var(--gold));
   }
   .page-content p.subtitle-heading {
     font-weight: 700;
@@ -284,11 +297,11 @@
   .nav-btn {
     position:absolute; bottom:12px; z-index:70;
     width:40px; height:40px; border-radius:50%;
-    border:1px solid #a8cbe6; background:#f2f9ff; color:var(--accent);
+    border:1px solid var(--line); background:var(--btn-bg); color:var(--accent);
     font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
     box-shadow: 0 4px 10px rgba(10,30,50,0.2);
   }
-  .nav-btn:hover:not(:disabled) { background:#dff0fb; }
+  .nav-btn:hover:not(:disabled) { background:var(--btn-hover); }
   .nav-btn:disabled { opacity:0.3; cursor:default; }
   .nav-btn.prev-btn { left:-20px; }
   .nav-btn.next-btn { right:-20px; }
@@ -296,12 +309,12 @@
   .progress-wrap {
     position:absolute; bottom:26px; left:50%; transform:translateX(-50%);
     display:flex; align-items:center; gap:10px;
-    font-family:'Inter', sans-serif; font-size:11px; color:#3f6a8a; z-index:50;
+    font-family:'Inter', sans-serif; font-size:11px; color:var(--muted); z-index:50;
   }
-  .progress-track { width:150px; height:2px; background:rgba(21,72,108,0.18); position:relative; }
-  .progress-fill { position:absolute; top:0; left:0; height:100%; background:var(--accent); transition:width 0.4s ease; }
+  .progress-track { width:150px; height:2px; background:rgba(31,74,134,0.18); position:relative; }
+  .progress-fill { position:absolute; top:0; left:0; height:100%; background:linear-gradient(90deg, var(--accent), var(--rose)); transition:width 0.4s ease; }
 
-  .loading-note { position:absolute; bottom:-28px; left:50%; transform:translateX(-50%); font-family:'Inter', sans-serif; font-size:11px; color:#3f6a8a; }
+  .loading-note { position:absolute; bottom:-28px; left:50%; transform:translateX(-50%); font-family:'Inter', sans-serif; font-size:11px; color:var(--muted); }
 
   .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
@@ -328,11 +341,11 @@
   }
   .lock-card input[type="text"]::placeholder { color: rgba(255,255,255,0.65); }
   .lock-card .unlock-btn {
-    width:100%; margin-top:12px; background:#f2f9ff; color:var(--accent);
+    width:100%; margin-top:12px; background:var(--btn-bg); color:var(--accent);
     border:none; padding:12px 12px; border-radius:6px; font-family:'Inter', sans-serif;
     font-weight:700; font-size:13px; cursor:pointer;
   }
-  .lock-card .unlock-btn:hover { background:#dff0fb; }
+  .lock-card .unlock-btn:hover { background:var(--btn-hover); }
   .lock-card .unlock-btn:disabled { opacity:0.6; cursor:default; }
   .lock-error { font-family:'Inter', sans-serif; font-size:12px; color:#ffd9d4; margin-top:12px; min-height:16px; }
   .lock-buy-link { display:inline-block; margin-top:18px; font-family:'Inter', sans-serif; font-size:11.5px; color:#fff; text-decoration:underline; }
@@ -369,7 +382,7 @@
   .cover-gate-image { width:100%; height:100%; object-fit: contain; display:block; border-radius: 1px; }
   .cover-gate-hint {
     font-family:'Inter', sans-serif; font-size:13px; font-weight:600; letter-spacing:0.04em;
-    color: var(--accent); background:#f2f9ff; padding:9px 18px; border-radius:20px;
+    color: var(--accent); background:var(--btn-bg); padding:9px 18px; border-radius:20px;
     box-shadow: 0 6px 16px rgba(10,30,50,0.2);
     animation: pulseHint 2.2s ease-in-out infinite;
   }
@@ -432,35 +445,36 @@
     position: relative;
     width: 100%; height: 100%;
     display:flex; align-items:center; justify-content:center;
-    padding: 56px 34px 50px;
+    padding: 50px 26px 42px;
     border: 2px solid var(--gold);
     box-shadow: inset 0 0 0 1px rgba(199,154,75,0.55), inset 0 0 26px rgba(139,100,50,0.08);
   }
   .frontispiece-text {
-    font-family: 'Libre Caslon Text', serif;
+    font-family: 'Lora', Georgia, 'Times New Roman', serif;
     font-style: italic;
-    font-size: 17px;
-    line-height: 1.7;
+    font-weight: 600;
+    font-size: 24px;
+    line-height: 1.5;
     text-align: center;
-    width: 100%;
     color: var(--ink);
+    width: 100%;
   }
-  .frontispiece-text p { margin: 0 0 0.75em 0; text-indent: 0; }
+  .frontispiece-text p { margin: 0 0 0.7em 0; text-indent: 0; }
   .frontispiece-text p:first-child::first-letter {
-    font-size: 1.6em; font-weight:700; font-style:normal; color: var(--accent);
+    font-size: 1.7em; font-weight: 700; font-style: normal; color: var(--rose-deep);
   }
   .frontispiece-rule { width:70px; height:1px; background:var(--gold); opacity:0.8; margin: 14px auto; }
 
   /* ---------- Modal (voice settings) ---------- */
   .modal-backdrop { position:fixed; inset:0; background:rgba(10,30,50,0.45); display:none; align-items:center; justify-content:center; z-index:200; }
   .modal-backdrop.open { display:flex; }
-  .modal { width:min(420px, 90vw); max-height:80vh; background:#f2f9ff; border:1px solid #a8cbe6; border-radius:12px; padding:22px; display:flex; flex-direction:column; gap:12px; overflow:auto; }
+  .modal { width:min(420px, 90vw); max-height:80vh; background:var(--btn-bg); border:1px solid var(--line); border-radius:12px; padding:22px; display:flex; flex-direction:column; gap:12px; overflow:auto; }
   .modal h2 { font-family:'Libre Caslon Text', serif; color:var(--accent); margin:0 0 4px 0; font-size:19px; font-weight:700; }
-  .modal label { font-family:'Inter', sans-serif; font-size:12px; color:#3f6a8a; }
+  .modal label { font-family:'Inter', sans-serif; font-size:12px; color:var(--muted); }
   .modal .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
   .modal .actions .chrome-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
   .modal .actions .chrome-btn.primary:hover { background:var(--accent-light); }
-  .load-status { font-family:'Inter', sans-serif; font-size:11.5px; color:#3f6a8a; min-height:14px; }
+  .load-status { font-family:'Inter', sans-serif; font-size:11.5px; color:var(--muted); min-height:14px; }
   .load-status.error { color:#b5432f; }
   .modal .range-row { display:flex; align-items:center; gap:10px; }
   .modal input[type="range"] { flex:1; accent-color: var(--accent); }
@@ -471,7 +485,7 @@
   /* sentence spans: start marker, currently-spoken highlight, tap-to-pick mode */
   .u { border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .u.start-here { background: rgba(199,154,75,0.38); box-shadow: 0 2px 0 var(--gold); }
-  .u.speaking { background: rgba(47,116,163,0.22); }
+  .u.speaking { background: rgba(196,87,127,0.16); }
   .picking .zone { display: none; }
   .picking .u { cursor: pointer; }
   .picking .u:hover { background: rgba(199,154,75,0.28); }
@@ -483,8 +497,28 @@
   }
   .single-page-mode .cover-page-frame { width: min(100%, 310px); }
   .load-status { line-height:1.45; }
-  .goto-input { width:100%; padding:11px 12px; border:1px solid #a8cbe6; border-radius:6px; background:#fff; color:var(--ink); font-family:'Inter', sans-serif; font-size:15px; }
+  .goto-input { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink); font-family:'Inter', sans-serif; font-size:15px; }
   .goto-input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .cover-gate { transition: opacity 0.55s ease; }
+  .cover-gate .cover-gate-frame { transition: transform 0.55s ease; }
+  .cover-gate.opening { opacity: 0; pointer-events: none; }
+  .cover-gate.opening .cover-gate-frame { transform: perspective(900px) rotateY(-24deg) scale(1.12); }
+
+  @media (max-width: 600px), (max-height: 640px) {
+    :root { --rail-w: 52px; }
+    .rail { gap: 4px; padding: 8px 4px; }
+    .rail button { width: 42px; min-height: 42px; border-radius: 10px; }
+    .rail button .lbl { display: none; }
+    .rail button .ic { font-size: 19px; }
+  }
+  @media (max-width: 600px) {
+    .nav-btn { display: none; }
+    .progress-track { width: 80px; }
+    .progress-wrap { bottom: 12px; }
+    .book::before, .book::after { display: none; }
+    .book { border-radius: 12px; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .flip-leaf.animating { transition: none !important; }
@@ -518,26 +552,23 @@
   </div>
 
   <div class="stage">
-    <div class="topbar">
-      <div class="brand">Vineys Reader <span class="book-title" id="brandTitle">THE COLOURED BIBLE</span></div>
-      <div class="topbar-controls">
-        <div class="btn-group" aria-label="Page layout">
-          <button id="onePageBtn" aria-pressed="false">1 Page</button>
-          <button id="twoPageBtn" class="active" aria-pressed="true">2 Page</button>
-        </div>
-        <div class="btn-group" aria-label="Zoom">
-          <button id="zoomMinus" aria-label="Zoom out">&minus;</button>
-          <button id="zoomReset" aria-label="Reset zoom" title="Reset zoom">&#10226;</button>
-          <button id="zoomPlus" aria-label="Zoom in">+</button>
-        </div>
-        <button class="chrome-btn" id="gotoBtn" title="Go to a page or chapter">&#8599; Go to</button>
-        <button class="chrome-btn" id="bookmarkBtn" title="Bookmark this page">&#128278; Bookmark</button>
-        <button class="chrome-btn" id="pickBtn" title="Tap a sentence to start reading from there">&#128205; Start here</button>
-        <button class="chrome-btn" id="narrateBtn">&#128266; Read aloud</button>
-        <button class="chrome-btn" id="pauseBtn" style="display:none;">&#9208; Pause</button>
-        <button class="chrome-btn" id="voiceSettingsBtn" title="Voices, pitch and speed">&#9881; Voice</button>
-      </div>
-    </div>
+    <nav class="rail" id="rail" aria-label="Reader controls">
+      <button id="onePageBtn" aria-pressed="false" title="One page at a time"><span class="ic">&#128196;</span><span class="lbl">1 Page</span></button>
+      <button id="twoPageBtn" class="active" aria-pressed="true" title="Two pages, like an open book"><span class="ic">&#128214;</span><span class="lbl">2 Page</span></button>
+      <div class="sep"></div>
+      <button id="zoomPlus" aria-label="Zoom in" title="Make the book bigger"><span class="ic" style="font-size:22px;font-weight:600;">+</span><span class="lbl">Bigger</span></button>
+      <button id="zoomMinus" aria-label="Zoom out" title="Make the book smaller"><span class="ic" style="font-size:22px;font-weight:600;">&minus;</span><span class="lbl">Smaller</span></button>
+      <button id="zoomReset" aria-label="Reset zoom" title="Back to normal size"><span class="ic" style="font-size:15px;font-weight:700;">1&times;</span><span class="lbl">Reset</span></button>
+      <button id="fullscreenBtn" title="Full screen"><span class="ic"></span><span class="lbl">Full</span></button>
+      <div class="sep"></div>
+      <button id="gotoBtn" title="Go to a page or chapter"><span class="ic">&#8599;</span><span class="lbl">Go to</span></button>
+      <button id="bookmarkBtn" title="Bookmark this page"><span class="ic">&#128278;</span><span class="lbl">Mark</span></button>
+      <div class="sep"></div>
+      <button id="narrateBtn" title="Read aloud"><span class="ic">&#128266;</span><span class="lbl">Read</span></button>
+      <button id="pauseBtn" title="Pause or resume" style="display:none;"><span class="ic">&#9208;</span><span class="lbl">Pause</span></button>
+      <button id="pickBtn" title="Tap a sentence to start reading from there"><span class="ic">&#128205;</span><span class="lbl">Start</span></button>
+      <button id="voiceSettingsBtn" title="Voices, pitch and speed"><span class="ic">&#9881;</span><span class="lbl">Voice</span></button>
+    </nav>
 
     <div class="book-wrap" id="bookWrap">
       <div class="book" id="bookEl">
@@ -1634,17 +1665,12 @@
     "Warning:"
   ];
   var FRONTISPIECE_VERSES = [
-    "In the beginning, the ships came, and the peoples of this coast were scattered like seed upon unfamiliar soil.",
-    "And the blood of the Khoi and the San met the blood of Europe, and the blood of the East, joined not by choosing, but by history\u2019s hand.",
-    "From that meeting a people rose, and the world did not know what to call them, so it called them nothing.",
-    "The other races looked upon them and saw confusion where there was convergence, saw absence where there was origin, and said: these are not a people, this is not a culture.",
-    "They were mocked for their tongue, doubted for their blood, and told again and again that to be mixed was to be less \u2014 neither, and therefore nothing.",
-    "They endured the discrimination of those who came from one place, aimed at a people who came from everywhere.",
-    "But what was hurled at them as an insult was, without their enemies knowing it, a prophecy.",
-    "For this is not a broken branch of other trees. This is the newest root, grown from all the others, and stronger for carrying all their blood at once.",
-    "Let it be known: they are not the leftovers of history. They are its evidence.",
-    "Let it be known: what the world named confusion, was in truth the first arrival of a new and evolved people.",
-    "This is their book. Let it be read with open eyes."
+    "In the beginning there was thunder, and fire upon the earth, and the old world broke.",
+    "Yet nature answers ruin with a beginning: from the storm and the ash rises a new creature the old world never knew.",
+    "So the ships came, the rivers of many nations ran together, and from the wreckage a new people was born.",
+    "They called it confusion. Nature calls it arrival.",
+    "They are not the leftovers of history. They are its evidence.",
+    "This is their book. Read it with open eyes."
   ];
   var HEADINGS_SET = {};
   BOOK_HEADINGS.forEach(function(h){ HEADINGS_SET[h] = true; });
@@ -1675,8 +1701,36 @@
 
   var ZOOM_MIN = 0.6, ZOOM_MAX = 2.2, ZOOM_STEP = 0.15;
   // Two-page spread vs. a narrower, taller, roomier single page.
-  var DOUBLE = { w: 460, h: 650, px: 38, pt: 42, pb: 48, fs: 18, lh: 1.6 };
-  var SINGLE = { w: 500, h: 740, px: 50, pt: 58, pb: 66, fs: 20, lh: 1.8 };
+  // Page size is worked out from the screen, so the book fills the space
+  // beside the control rail and the text stays a readable size on a phone.
+  var layoutApplied = null;
+  function railWidth(){ return (window.innerWidth <= 600 || window.innerHeight <= 640) ? 52 : 64; }
+  function layoutFor(n){
+    var small = window.innerWidth <= 600;
+    var fx = small ? 8 : 28, fy = small ? 8 : 24;
+    var boxW = window.innerWidth - railWidth() - 12, boxH = window.innerHeight - 12;
+    var w, h;
+    if (n === 1){
+      w = Math.max(260, Math.min(560, boxW - 2 * fx));
+      h = Math.max(380, Math.min(820, boxH - 2 * fy));
+    } else {
+      w = Math.max(240, Math.min(480, Math.floor((boxW - 2 * fx) / 2)));
+      h = Math.max(380, Math.min(720, boxH - 2 * fy));
+    }
+    w = Math.round(w / 4) * 4; h = Math.round(h / 4) * 4;
+    var narrow = w < 420;
+    return {
+      w: w, h: h, fx: fx, fy: fy, boxW: boxW, boxH: boxH,
+      px: narrow ? 24 : (n === 1 ? 50 : 38),
+      pt: narrow ? 34 : (n === 1 ? 58 : 42),
+      pb: narrow ? 46 : (n === 1 ? 66 : 48),
+      fs: narrow ? (n === 1 ? 19 : 17) : (n === 1 ? 20 : 18),
+      lh: narrow ? 1.65 : (n === 1 ? 1.8 : 1.6)
+    };
+  }
+  function setRailBtn(btn, icon, label){
+    btn.innerHTML = '<span class="ic">' + icon + '</span><span class="lbl">' + label + '</span>';
+  }
   var MODE_KEY = "vineys_page_mode", LASTPOS_KEY = "vineys_last_position", BOOKMARK_KEY = "vineys_bookmark";
 
   var $ = function(id){ return document.getElementById(id); };
@@ -2098,10 +2152,10 @@
 
   // ----- speaking -----
   function updateNarrationButtons(){
-    narrateBtn.innerHTML = narration.active ? "&#9209; Stop" : "&#128266; Read aloud";
+    setRailBtn(narrateBtn, narration.active ? "&#9209;" : "&#128266;", narration.active ? "Stop" : "Read");
     narrateBtn.classList.toggle("active", narration.active);
     pauseBtn.style.display = (hasSpeech && narration.active && !narration.preview) ? "" : "none";
-    pauseBtn.innerHTML = narration.paused ? "&#9654; Resume" : "&#9208; Pause";
+    setRailBtn(pauseBtn, narration.paused ? "&#9654;" : "&#9208;", narration.paused ? "Resume" : "Pause");
   }
 
   function utteranceFor(chunk){
@@ -2349,9 +2403,9 @@
       if (!text || !frame.clientHeight) continue;
       var cs = getComputedStyle(frame);
       var avail = frame.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-      var size = 17;
+      var size = 24;
       text.style.fontSize = size + "px";
-      while (size > 10 && text.offsetHeight > avail){ size -= 0.5; text.style.fontSize = size + "px"; }
+      while (size > 13 && text.offsetHeight > avail){ size -= 0.5; text.style.fontSize = size + "px"; }
     }
   }
 
@@ -2527,8 +2581,9 @@
     return idx <= 0 ? 0 : (idx % 2 === 1 ? idx : idx - 1);
   }
 
-  function applyModeVars(n){
-    var c = n === 1 ? SINGLE : DOUBLE;
+  function applyModeVars(n, cfg){
+    var c = cfg || layoutFor(n);
+    layoutApplied = c;
     var rs = document.documentElement.style;
     rs.setProperty("--page-count", n);
     rs.setProperty("--page-w", c.w + "px");
@@ -2536,6 +2591,8 @@
     rs.setProperty("--pad-x", c.px + "px");
     rs.setProperty("--pad-top", c.pt + "px");
     rs.setProperty("--pad-bottom", c.pb + "px");
+    rs.setProperty("--frame-x", c.fx + "px");
+    rs.setProperty("--frame-y", c.fy + "px");
     rs.setProperty("--content-font-size", c.fs + "px");
     rs.setProperty("--content-line-height", c.lh);
     leavesArea.classList.toggle("single-page-mode", n === 1);
@@ -2608,7 +2665,7 @@
     var bm = loadAnchor(BOOKMARK_KEY);
     var on = !!(bm && viewContainsAnchor(bm));
     bookmarkBtn.classList.toggle("active", on);
-    bookmarkBtn.innerHTML = on ? "&#128278; Bookmarked" : "&#128278; Bookmark";
+    setRailBtn(bookmarkBtn, "&#128278;", on ? "Marked" : "Mark");
     bookmarkBtn.title = on ? "Click to remove this bookmark" : "Bookmark this page";
   }
   function onViewChanged(){
@@ -2692,13 +2749,25 @@
   // ---------- Scaling to viewport ----------
   var stageEl = document.querySelector(".stage");
 
+  // Re-flows the book when the screen changes shape (turning a phone, resizing
+  // a window), keeping the reader at the same place in the text.
+  function relayout(cfg){
+    if (narration.active) stopNarration();
+    var anchor = currentAnchor();
+    applyModeVars(state.pageCount, cfg);
+    paginate();
+    state.current = mapIndexForMode(indexForAnchor(anchor), state.pageCount);
+    renderStatic();
+  }
   function rescale(){
-    var cfg = state.pageCount === 1 ? SINGLE : DOUBLE, pageW = cfg.w, pageH = cfg.h;
-    var bookW = pageW * state.pageCount + 56 + 56;
-    var bookH = pageH + 48 + 80;
-    var availW = window.innerWidth - 60;
-    var availH = window.innerHeight - 120;
-    var scale = Math.min(availW / bookW, availH / bookH, 1.1);
+    var n = state.pageCount, cfg = layoutFor(n);
+    if (layoutApplied && state.pages.length &&
+        (Math.abs(cfg.w - layoutApplied.w) >= 8 || Math.abs(cfg.h - layoutApplied.h) >= 8 || cfg.fs !== layoutApplied.fs)){
+      relayout(cfg);
+    }
+    var c = layoutApplied || cfg;
+    var totalW = c.w * n + 2 * c.fx, totalH = c.h + 2 * c.fy;
+    var scale = Math.min(cfg.boxW / totalW, cfg.boxH / totalH, 1.25);
     state.fitScale = Math.max(0.3, scale);
     applyScale();
   }
@@ -2738,7 +2807,49 @@
     else if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
   });
 
-  window.addEventListener("resize", rescale);
+  var resizeTimer = null;
+  function scheduleRescale(){ clearTimeout(resizeTimer); resizeTimer = setTimeout(rescale, 160); }
+  window.addEventListener("resize", scheduleRescale);
+  window.addEventListener("orientationchange", scheduleRescale);
+
+  // Swipe left / right to turn pages on a touch screen.
+  var swipeX = null, swipeY = null, swipeT = 0;
+  leavesArea.addEventListener("touchstart", function(e){
+    if (e.touches.length !== 1){ swipeX = null; return; }
+    swipeX = e.touches[0].clientX; swipeY = e.touches[0].clientY; swipeT = Date.now();
+  }, { passive: true });
+  leavesArea.addEventListener("touchend", function(e){
+    if (swipeX === null || state.picking || state.zoom > 1.05) return;
+    var tch = e.changedTouches[0], dx = tch.clientX - swipeX, dy = tch.clientY - swipeY;
+    swipeX = null;
+    if (Math.abs(dx) > 50 && Math.abs(dy) < 70 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - swipeT < 800){
+      if (dx < 0) goNext(); else goPrev();
+    }
+  }, { passive: true });
+
+  // Full screen (not offered by every phone browser; installed apps are already full screen).
+  var fsBtn = $("fullscreenBtn");
+  var FS_ENTER = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+  var FS_EXIT = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
+  function fsElement(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
+  var docEl = document.documentElement;
+  var canFullscreen = !!(docEl && (docEl.requestFullscreen || docEl.webkitRequestFullscreen));
+  setRailBtn(fsBtn, FS_ENTER, "Full");
+  if (!canFullscreen) fsBtn.style.display = "none";
+  fsBtn.addEventListener("click", function(){
+    try {
+      if (fsElement()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else (docEl.requestFullscreen || docEl.webkitRequestFullscreen).call(docEl);
+    } catch(e){}
+  });
+  function onFullscreenChange(){
+    var on = !!fsElement();
+    setRailBtn(fsBtn, on ? FS_EXIT : FS_ENTER, on ? "Exit" : "Full");
+    fsBtn.classList.toggle("active", on);
+    scheduleRescale();
+  }
+  document.addEventListener("fullscreenchange", onFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", onFullscreenChange);
   $("zoomMinus").addEventListener("click", function(){ setZoom(state.zoom - ZOOM_STEP); });
   $("zoomPlus").addEventListener("click", function(){ setZoom(state.zoom + ZOOM_STEP); });
   $("zoomReset").addEventListener("click", function(){ setZoom(1); stageEl.scrollTop = 0; stageEl.scrollLeft = 0; });
@@ -2751,7 +2862,8 @@
   // ---------- Cover gate (closed book) ----------
   var coverGate = $("coverGate");
   coverGate.addEventListener("click", function(){
-    coverGate.style.display = "none";
+    coverGate.classList.add("opening");
+    setTimeout(function(){ coverGate.style.display = "none"; }, 560);
   });
 
   // ---------- Access gate ----------
@@ -2775,15 +2887,35 @@
       return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ("0" + b.toString(16)).slice(-2); }).join("");
     });
   }
+  // Returns { status, count }. status: match | nomatch | empty | nofile | badfile | nocrypto | error
   function checkLocalKey(key){
+    var info = { status: "nomatch", count: 0 };
     return sha256Hex("vineys:" + normKey(key)).then(function(h){
-      return fetch("keys.json", { cache: "no-store" })
-        .then(function(r){ return r.ok ? r.json() : null; })
+      // The ?v= part makes sure an old cached copy of keys.json is never used.
+      return fetch("keys.json?v=" + Date.now(), { cache: "no-store" })
+        .then(function(r){
+          if (!r.ok){ info.status = "nofile"; return null; }
+          return r.json();
+        })
         .then(function(data){
           var list = data && (data.hashes || data);
-          return !!(list && typeof list.indexOf === "function" && list.indexOf(h) !== -1);
+          if (!list || typeof list.indexOf !== "function"){
+            if (info.status !== "nofile") info.status = "badfile";
+            return info;
+          }
+          info.count = list.length;
+          info.status = list.indexOf(h) !== -1 ? "match" : (list.length ? "nomatch" : "empty");
+          return info;
         });
-    }).catch(function(){ return false; });
+    }).catch(function(e){
+      info.status = (e && e.message === "no-crypto") ? "nocrypto" : "error";
+      return info;
+    });
+  }
+  // Adding ?debug=1 to the reader's address shows why a key was refused.
+  function debugNote(info){
+    if (window.location.search.indexOf("debug") === -1 || !info) return "";
+    return " [key list: " + info.status + ", " + info.count + " keys]";
   }
   function unlockSucceeded(key){
     unlockBtn.disabled = false;
@@ -2791,7 +2923,7 @@
     try { localStorage.setItem(STORAGE_KEY, key); } catch(e){}
     grantAccess();
   }
-  function askPaymentService(key){
+  function askPaymentService(key, info){
     fetch(ACCESS_CHECK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2801,12 +2933,12 @@
         if (data && data.valid){ unlockSucceeded(key); return; }
         unlockBtn.disabled = false;
         unlockBtn.textContent = "Unlock my book";
-        lockError.textContent = "That key doesn't look right \u2014 check for typos, or use the key you were sent.";
+        lockError.textContent = "That key doesn't look right \u2014 check for typos, or use the key you were sent." + debugNote(info);
       })
       .catch(function(){
         unlockBtn.disabled = false;
         unlockBtn.textContent = "Unlock my book";
-        lockError.textContent = "That key wasn't recognised, and the online check couldn't be reached. Check the key for typos or try again in a moment.";
+        lockError.textContent = "That key wasn't recognised, and the online check couldn't be reached. Check the key for typos or try again in a moment." + debugNote(info);
       });
   }
 
@@ -2814,9 +2946,9 @@
     lockError.textContent = "";
     unlockBtn.disabled = true;
     unlockBtn.textContent = "Checking\u2026";
-    checkLocalKey(key).then(function(localOk){
-      if (localOk) unlockSucceeded(key);
-      else askPaymentService(key);
+    checkLocalKey(key).then(function(info){
+      if (info.status === "match") unlockSucceeded(key);
+      else askPaymentService(key, info);
     });
   }
   unlockBtn.addEventListener("click", function(){
@@ -2844,9 +2976,10 @@
   })();
 
   // ---------- Init ----------
-  $("brandTitle").textContent = state.title;
   if (!hasSpeech){ narrateBtn.style.display = "none"; pauseBtn.style.display = "none"; pickBtn.style.display = "none"; if (voiceSettingsBtn) voiceSettingsBtn.style.display = "none"; }
-  if (parseInt(lsGet(MODE_KEY), 10) === 1) state.pageCount = 1;
+  var savedMode = parseInt(lsGet(MODE_KEY), 10);
+  if (savedMode === 1 || savedMode === 2) state.pageCount = savedMode;
+  else state.pageCount = window.innerWidth < 720 ? 1 : 2;   // phones start with one page
   applyModeVars(state.pageCount);
   rescale();
   updateZoomChrome();
