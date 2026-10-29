@@ -1,68 +1,98 @@
-// Vineys Reader — service worker
-// Caches the app shell so it installs as an app and works offline.
+/* Vineys Reader service worker
+ * Bump CACHE_VERSION every time you upload a new index.html / manuscript.
+ * Pages (index.html, buy.html) are fetched network-first, so readers get the
+ * newest book whenever they are online, and the cached copy when they are not.
+ */
+const CACHE_VERSION = "vineys-2026-10-29-v1";
+const CACHE_NAME = CACHE_VERSION;
 
-var CACHE_NAME = "vineys-reader-v27";
-var ASSETS = [
+const CORE_ASSETS = [
   "./",
-  "./index.html",
-  "./manifest.json",
-  "./cover.jpg",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/apple-touch-icon.png",
-  "./icons/favicon-32.png",
-  "./icons/favicon-16.png"
+  "index.html",
+  "buy.html",
+  "manifest.json",
+  "cover.jpg",
+  "icons/favicon-16.png",
+  "icons/favicon-32.png",
+  "icons/apple-touch-icon.png"
 ];
 
-self.addEventListener("install", function(event){
+// Never cached, never served from cache (admin tool and payment checks)
+const NEVER_CACHE = ["keygen.html"];
+
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache){
-      // Add files one by one so a single missing file can't stop the whole install.
-      return Promise.all(ASSETS.map(function(a){ return cache.add(a).catch(function(){}); }));
-    }).then(function(){ return self.skipWaiting(); })
+    caches.open(CACHE_NAME).then((cache) =>
+      // Add one by one so a missing file can't break the whole install
+      Promise.all(CORE_ASSETS.map((url) => cache.add(url).catch(() => null)))
+    ).then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener("activate", function(event){
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then(function(keys){
-      return Promise.all(keys.filter(function(k){ return k !== CACHE_NAME; })
-        .map(function(k){ return caches.delete(k); }));
-    }).then(function(){ return self.clients.claim(); })
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener("fetch", function(event){
-  if (event.request.method !== "GET") return;
-  // The list of valid access keys must always be fresh, never cached.
-  if (new URL(event.request.url).pathname.slice(-9) === "keys.json"){
-    event.respondWith(fetch(event.request).catch(function(){
-      return new Response('{"v":1,"hashes":[]}', { headers: { "Content-Type": "application/json" } });
-    }));
-    return;
-  }
-  // Pages load from the network first, so updates reach people straight away;
-  // the saved copy is only used when they are offline.
-  if (event.request.mode === "navigate"){
-    event.respondWith(fetch(event.request).then(function(response){
-      var copy = response.clone();
-      caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
+function isFontRequest(url) {
+  return url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com";
+}
+
+function networkFirst(request) {
+  return fetch(request)
+    .then((response) => {
+      if (response && response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+      }
       return response;
-    }).catch(function(){
-      return caches.match(event.request).then(function(r){ return r || caches.match("./index.html"); });
-    }));
+    })
+    .catch(() =>
+      caches.match(request, { ignoreSearch: true }).then((hit) => hit || caches.match("index.html"))
+    );
+}
+
+function staleWhileRevalidate(request) {
+  return caches.match(request).then((hit) => {
+    const fresh = fetch(request)
+      .then((response) => {
+        if (response && (response.ok || response.type === "opaque")) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      })
+      .catch(() => hit);
+    return hit || fresh;
+  });
+}
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET") return; // payment/verify POSTs go straight to the network
+
+  const url = new URL(request.url);
+
+  if (isFontRequest(url)) {
+    event.respondWith(staleWhileRevalidate(request));
     return;
   }
-  event.respondWith(
-    caches.match(event.request).then(function(cached){
-      if (cached) return cached;
-      return fetch(event.request).then(function(response){
-        var copy = response.clone();
-        caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
-        return response;
-      }).catch(function(){
-        if (event.request.mode === "navigate") return caches.match("./index.html");
-      });
-    })
-  );
+
+  if (url.origin !== self.location.origin) return; // payment worker etc.: untouched
+
+  if (NEVER_CACHE.some((name) => url.pathname.endsWith("/" + name) || url.pathname === "/" + name)) {
+    return; // let the browser handle it normally
+  }
+
+  const isPage = request.mode === "navigate" ||
+    url.pathname.endsWith(".html") || url.pathname.endsWith("/") || url.pathname.endsWith("manifest.json");
+
+  event.respondWith(isPage ? networkFirst(request) : staleWhileRevalidate(request));
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data === "skipWaiting") self.skipWaiting();
 });
