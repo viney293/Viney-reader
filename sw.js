@@ -3,7 +3,7 @@
  * Pages (index.html, buy.html) are fetched network-first, so readers get the
  * newest book whenever they are online, and the cached copy when they are not.
  */
-const CACHE_VERSION = "vineys-2026-10-29-v1";
+const CACHE_VERSION = "vineys-2026-11-09-v1";
 const CACHE_NAME = CACHE_VERSION;
 
 const CORE_ASSETS = [
