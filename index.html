@@ -267,6 +267,12 @@
     color: #3a85c9;
   }
 
+  .page-content p.scripture {
+    font-style: italic;
+    font-weight: 700;
+    text-indent: 0;
+  }
+
   .page-content.title-page {
     display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
     font-family: 'Libre Caslon Text', serif;
@@ -378,6 +384,71 @@
     animation: pulseHint 2.2s ease-in-out infinite;
   }
   @keyframes pulseHint { 0%,100%{ opacity:0.75; } 50%{ opacity:1; } }
+
+
+  /* ---------- 3D Bible-style cover (closed book) ---------- */
+  .cover3d-scene {
+    --bw: min(285px, 62vw);
+    --bh: calc(var(--bw) * 1.5);
+    --bd: calc(var(--bw) * 0.2);
+    position: relative;
+    width: calc(var(--bw) * 1.7);
+    height: calc(var(--bh) * 1.12);
+    perspective: 1600px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cover3d-shadow {
+    position: absolute; left: 14%; bottom: 3%; width: 78%; height: 34px;
+    background: radial-gradient(ellipse at center, rgba(6,20,36,0.6), rgba(6,20,36,0) 70%);
+    filter: blur(7px); transform: skewX(-22deg);
+  }
+  .book3d {
+    position: relative; width: var(--bw); height: var(--bh);
+    transform-style: preserve-3d;
+    transform: rotateX(-7deg) rotateY(27deg);
+    transition: transform 0.6s cubic-bezier(.2,.7,.2,1);
+    animation: bookFloat 5s ease-in-out infinite;
+  }
+  @keyframes bookFloat { 0%,100%{ translate: 0 0; } 50%{ translate: 0 -7px; } }
+  .book3d .face { position: absolute; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .book3d .front {
+    inset: 0; transform: translateZ(calc(var(--bd) / 2));
+    border-radius: 2px 7px 7px 2px; overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10), 0 0 0 1px rgba(0,0,0,0.5);
+  }
+  .book3d .front svg, .book3d .front img { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .book3d .spine {
+    width: var(--bd); height: 100%; left: calc(50% - var(--bd) / 2); top: 0;
+    transform: rotateY(-90deg) translateZ(calc(var(--bw) / 2));
+    border-radius: 3px 0 0 3px; overflow: hidden;
+  }
+  .book3d .spine svg { width: 100%; height: 100%; display: block; }
+  .book3d .top {
+    width: var(--bw); height: var(--bd); left: 0; top: calc(50% - var(--bd) / 2);
+    transform: rotateX(90deg) translateZ(calc(var(--bh) / 2));
+    background:
+      linear-gradient(180deg, rgba(247,226,166,0.55), rgba(154,106,36,0.45)),
+      repeating-linear-gradient(180deg, #f8efd8 0 1.6px, #e3cf9f 1.6px 3.2px);
+    box-shadow: inset 0 0 0 1px rgba(120,80,20,0.5);
+  }
+  .book3d .fore {
+    width: var(--bd); height: 100%; left: calc(50% - var(--bd) / 2); top: 0;
+    transform: rotateY(90deg) translateZ(calc(var(--bw) / 2));
+    background:
+      linear-gradient(90deg, rgba(247,226,166,0.5), rgba(154,106,36,0.5)),
+      repeating-linear-gradient(90deg, #f8efd8 0 1.6px, #e3cf9f 1.6px 3.2px);
+  }
+  .book3d .backc { inset: 0; transform: translateZ(calc(var(--bd) / -2)) rotateY(180deg); background: #0b2842; }
+  .cover-gate.opening { opacity: 0; transition: opacity 0.55s ease; }
+  .cover-gate.opening .book3d { animation: none; transform: rotateX(0deg) rotateY(0deg) scale(1.18); }
+
+  .cover-flat {
+    position: relative; width: min(100%, 246px); aspect-ratio: 2 / 3;
+    border-radius: 3px 7px 7px 3px; overflow: hidden;
+    box-shadow: 0 8px 20px rgba(10,30,50,0.35), 0 0 0 1px rgba(0,0,0,0.45);
+  }
+  .cover-flat svg, .cover-flat img { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .single-page-mode .cover-flat { width: min(100%, 310px); }
 
   /* ---------- Ornate gold corner flourishes + gothic arch topper (shared: cover + frontispiece) ---------- */
   .ornate-corner {
@@ -513,12 +584,7 @@
   </div>
 
   <div class="cover-gate" id="coverGate">
-    <div class="cover-gate-frame">
-      <img src="cover.jpg" alt="Book cover" class="cover-gate-image">
-      <div class="ornate-corner tl"></div><div class="ornate-corner tr"></div>
-      <div class="ornate-corner bl"></div><div class="ornate-corner br"></div>
-      <div class="gothic-arch"></div>
-    </div>
+    <div class="cover3d-scene" id="coverScene"></div>
     <div class="cover-gate-hint" id="coverHint">Tap to open</div>
   </div>
 
@@ -783,38 +849,49 @@
     "Chapter Twenty-Three closes with a covenant. Chapter Twenty-Four tells us how to face the devil we have named, and what a renewed collective consciousness demands of us. Chapter Twenty-Five turns across the Atlantic to the African American story, our nearest cousins and the clearest example of a people who built something from nothing. After that, The Plan Forward turns everything we have named into something practical: a real plan for what we do next.",
     "This is our new covenant. Not with heaven, but with ourselves. This is the Coloured Bible.",
     "Chapter 1: Three Myths We Must Get Out of the Way",
+    "Who This Book Speaks To",
     "Let me clear the air on a few matters. As you read, you will see that this book is specific in its purpose. It speaks directly to those of us who, through historical narratives, classifying laws, social stereotypes and dehumanising tactics, were defined as being of mixed origin, as brown and, above all, as Coloured. You will also find that this book is a conversation between you and me: honest, unapologetic and fearless. In it, I express my concerns, my desires and my conviction that the Coloured identity must become one that is not only respected, but acknowledged as a people who can no longer afford discriminatory punishments, purely on the basis of other race and ethnic groups prejudices, and intolerances.",
     "The damage to our collective Coloured identity, reputation, integrity and dignity does not affect us only as individuals; it reflects on all of us as a people. This conversation calls on us to recognise how the actions of single young Coloured men in our many troubled gang and drug-infested communities has come to hurt basically all of our reputations. They may commit murder or other crimes. Become gangsters or drug abusers. May push trolleys, or bend under poverty in these low-cost housing schemes. Whatever their stories, it can cost a Coloured businessman the trust of a potential white client seeking his services. It can lead Black government officials to refuse to award tenders. You will also see that this conversation carries an almost biblical request: that we redefine ourselves and commit to becoming more Coloured-conscious, more politically astute and more aware, and more focused on making sure our kids understand the racial, class and cultural dichotomies surrounding the politics that shape their lives and environments.",
+    "Three Notions That Keep Us Divided",
     "Beyond these matters, there are also three important mental paradigms, rooted in our many indifferences, that I need to address at the outset. I have identified three notions that have become entrenched in our thinking. Notions that are central to the issues that keep us divided, argumentative and so disloyal to one another and our shared connection as a people. That is leaving us trapped in a chronic identity crisis as a people whose origins span races, ethnicities, tribes and cultures scattered across this world. In this chapter, I will raise these notions briefly but thoroughly, then expand on each in the relevant chapters.",
+    "Myth One: We Cannot Unite",
     "The first is a saying we hear regularly, a stone we hurl at one another whenever we express disappointment in our collective failure to stand up for our identity and reputation. It is the claim, and the belief, that Coloured people simply cannot unite. I consider this notion a myth, born of the very ignorance that serves the survival methods we adopted as historical victims of successive eras of discrimination, inequality and deprivation.",
     "This belief became all the more real in the new South Africa, where we have once again become silent, unprotected victims of another government\u2019s political policies and race-promoting tactics rather than beneficiaries of it, as also a previously underprivileged group. Together with our Khoisan ancestors, who lost their distinct ethnic statuses when they were also classified as Coloured under apartheid, we are caught between two powers. The first is an ANC that, I argue, governs according to a Black-domination agenda. The second is a white-led DA whose leadership has strategically captured the Coloured voting bloc. I argue that it uses that bloc to advance a doctrine of white supremacy and protect white interests under an imperialist political agenda.",
     "I will debunk the myth that we are incapable of unity in a later chapter devoted to the subject. My argument is that this notion has become a blind sense of reality for many of us because we fail to see that we have already built a very powerful Coloured unity and that the majority of our people are already part of it. We call it the DA: the most powerful political unity after the ANC. It has achieved something enormous. During and after the second national and provincial elections, Coloured people recognised that the ANC had submitted to an African-nationalist faction within its ranks, intent on treating Coloured identity and Khoisan ancestry as obstacles to establishing a wholly Black domain.",
     "Together, we became the deciding force behind the DA\u2019s unity, consciously taking back the voting power that, in large enough numbers, we had once delivered to the ANC. United under the DA, the Coloured vote took an entire province. Our voting power was great enough to secure for ourselves and our children the stability of our identity and the legislative authority our people, especially our children and youth, needed to pass provincial by-laws and regulations securing jobs, education placements, healthcare and housing. This authority mattered under the threat of a one-sided, enforced integration scheme that affected Coloured areas while leaving areas previously declared white under apartheid untouched.",
     "That unity, built on the power of the Coloured vote, could have funded the genuine reparation process our people needed to advance Coloured empowerment. It could have kept Coloured communities demographically stable and secure while we dealt with the growing pains of liberation and the national struggles with crime and corrupt leadership. Instead, that power was handed to a politically deceptive force: a white-minority leadership that continually strategised to build the DA around a latent imperialist agenda. Its aim was to keep South Africa\u2019s white population economically and socially secure and unhindered, standing firm against the waves of Black domination transforming the nation. As a collective Coloured identity, we neglected that power without understanding the damage being done to our identity, reputation, progress and integrity as a people.",
     "We remain, in ways we do not want to admit, mentally enslaved by our history, and are still the main ingredient in the enormous political machine we helped build. We feed it with our votes, and until now we have received almost nothing in return.",
+    "Myth Two: We Are the Most Racist Group",
     "The second matter is another myth about us, and one of the most unfair: that Coloured people are the most racist group in South Africa. I find this claim nearly impossible to take seriously. Yet it is accepted so readily that it has buried something far more important. It has overshadowed the chronic racism we actually fought against for generations, and are in many ways still fighting: the racism of the Afrikaner state.",
     "Consider what that racism was and what it left in the minds of the majority of Afrikaners and white South Africans in general. The Afrikaner, as a white ethnic group, was raised on cultural teachings and discredited academic theories that convinced its members they were a superior kind of human being. On that belief, they built an ideology; on that ideology, they built apartheid. Today, that thinking lives on in the older, conservative generation, which clings to land that was never theirs. It builds separate, race-based enclaves such as Orania and, through groups such as AfriForum, travels the world seeking right-wing support against its own country. Yes, the younger generation of Afrikaners is struggling against that inheritance, but the right-wing forces trying to influence them are academic in its persuasion.",
     "Meanwhile, South Africans of every group have witnessed ugly xenophobic attacks on foreign nationals by many of our Black South Africans. It is also a fact that Many Coloured and white people carry the day-to-day lived experience of being treated with contempt by some Black South Africans, in shops, by law-enforcement officers and in government service offices. Yet through all of this, the label of \u201cmost racist\u201d is pinned on us.",
     "When we consider where we come from, it is in fact senseless to believe that Coloureds can be more racist, than other races. One Coloured family is easily built from the whole world. In one Coloured household, siblings born to the same parents can carry every shade of skin and every kind of hair of all the races in the world. How do you teach racial hatred inside a home where your own sibling is darker than you, with different hair and different features? How do you conclude that a people is racist when it was in fact born, from the outset, into communities that grew out of interracial unions, where interracial mixing is basically a lifestyle. In predominantly Coloured communities, neighbours were Black, Indian and even white. No street anyone of us grew up on was ever only one thing.",
     "I will be honest, because this book demands it. Prejudice exists in every community, and ours is and was not immune. But there is a world of difference between prejudice and the accusation that we are the worst racist in the land. That claim does not survive the evidence of our origins, our family structures or our history.",
+    "A Myth We Helped Spread",
     "Here is the part that hurts most: this myth was not born only in other people\u2019s mouths. Much of it was started and is kept alive by Coloured people ourselves, especially those obsessed with being seen as liberal, whom I discuss below. It is a myth repeated by those of us who became comfortable in survival mode, secure enough to eat and pay, not for their children\u2019s degrees, but for a child\u2019s certificate at a local college, and eager to prove they are nothing like the \u201cbackward Coloureds\u201d around them. They repeat the accusation against their own people, and it grew stronger every time it was said.",
     "We are not the most racist. We are ethnically and tribally conscious, like the whole of Africa. Like all African ethnicities and tribes, we react with cultural caution and distrust because racism still governs the world we live in. Protecting yourself against racism is not the same as practising it. When Coloured people speak their minds and stay guarded against racism, it\u2019s a right that is owed, because it\u2019s a past that shaped us, and their identity feels threatened. Let us be honest: it has been threatened for a very long time.",
     "We were not the architects of racism in this country; we were its target. Guarding our identity against racism does not make us racist.",
+    "Myth Three: The Liberal Obsession",
     "The third matter concerns Coloured people I have met who are obsessed with being called liberal, because they never educated themselves enough on the difference between liberalism and liberation. There is a reason why the word liberal is more attached to being white, and the word liberated more attached to being black. Liberalism, in truth, began as a universal programme aimed at liberating the white mind. Over the course of human history, European white people became the unwitting subjects of explorers and European academics, who travelled into Indigenous worlds and returned with narratives that infused the white race with cultural teachings steeped in racism and negative portrayals of every Black race and ethnicity they encountered. The Oxford Manifesto, adopted after the Second World War and regarded by many as the liberal bible, was never really intended for the Black victims of white domination. Blacks had to seek their own liberation from the racist paradigms and narratives that made them victims of apartheid, colonialism, imperialism and a global doctrine of white supremacy. Before anyone can truly become liberal, they must first liberate themselves from the paradigm of racism. Black people are victims of racism, and they must first liberate themselves from the mental consequences of enslavement.",
     "These liberal-obsessed Coloured siblings of ours have adopted a habit of attacking every Coloured leader, every Coloured protest and every stand against racism. They attack more fiercely than Black or white people do, dismissing all such action as racist in itself. This has distorted the very definition of racism, and it needs to be unlearned. We need to understand that there is a difference between calling out racism and being racist.",
+    "Those Who Run From the Word \u201cColoured\u201d",
     "This book is also for another kind of Coloured person: those who run from the word \u201cColoured,\u201d especially those who grew up in struggle politics and became suspicious of any racial identity. I once belonged to this group. I call them Congress Coloureds, Pan-Africanist Coloureds or Comrade Coloureds.",
     "For this group, being labelled Coloured feels like a racist act in itself. They fail to see that the Afrikaner borrowed an existing English term that American slave traders had used generations ago to describe the many mixed-race slaves born in the southern United States. This group behaves as though the Afrikaner invented this English term, which they simply translated and carried over into an ignorant classification of all brown-skinned people. \u201cI am not Coloured. I am human\u201d became their answer, a way of asking Black and white South Africans to see them as equals in humanity.",
     "There is truth in saying that Coloured people are simply human. But Zulu people are human too, and they kept their identity. Afrikaners are human too, and they kept theirs. Every African who held on to their tribe and ethnicity remained fully human. No Zulu person is less human for saying, \u201cI am Zulu.\u201d No Afrikaner is less human for saying, \u201cI am Afrikaner.\u201d So why must a Coloured person delete the first half of that sentence just to be allowed the second half?",
+    "Perhaps This Has Been the Wrong Battle",
     "Perhaps this has been the wrong battle to fight. Ask yourself a few honest questions. If you want white acceptance, why let someone else\u2019s opinion decide how you live with yourself? If you reject the word \u201cColoured\u201d because of its apartheid history, must the people who abused it own its meaning forever? If you say you are only human, does that really require erasing this one identity? And if you feel angry at anyone who claims the word Coloured, could that anger be pulling you away from the very people whose history made you?",
     "Whether we like it or not, as an identity and a cultural group, we are connected by more than a government form. We share communities, families, language, memory, struggle and stereotype. We did not choose that connection, and we cannot undo it simply by refusing to say the word.",
     "I think the word itself needs reconsidering. \u201cColoured\u201d sounds like an insult only because of the history stacked on top of it. Colour is not ugly. A rainbow is colour. A prism is colour. I refuse to let the people who used the word to shame us convince me that the word itself was the shame.",
+    "A Different Starting Place",
     "The Coloured Bible starts from a different place. I do not believe we have to choose between our different roots. We can hold Khoisan, African, European and Asian ancestry together, all at once, without any one of them cancelling out the rest. Being Coloured does not make you less African, less European or less human. It can simply mean this: history made us this way. Being Coloured is like occupying a state of neutrality, the safe ground between the races, tribes and ethnicities from which you originate.",
     "This book is not asking you to give up your ancestry, your politics, your African identity, your Khoisan heritage, your European blood, your class views or your humanity. I am not asking you to agree before you start reading. I am asking you to set aside whatever anger drives your unwillingness to respect your origins as a person of mixed heritage, at least long enough to look. If we cannot talk about who we are without fighting over a name, we will never build anything together.",
     "So this book is for every kind of Coloured person: the liberal Coloured, the Comrade Coloured, the Khoisan-conscious, the European-conscious, the African-conscious, the class-conscious, and the one who simply says, \u201cThis is who I am.\u201d Disagree with it. Argue with it. Get angry at it. But read it first.",
+    "A Warning Before You Read Further",
     "Before you read further, I also need to remind you: this book is not for the racially sensitive, or for the faint-hearted. It is not for those of us of mixed-race and multi-ethnic identity who are still chasing approval, still waiting to be noticed, still asking permission and apologising just to exist. The Coloured Bible was not meant to be a comfortable piece of literature. I felt compelled to write it because I do not need to be convinced that Coloured people are, once again, victims in this new South Africa. We live under a governing party that is deeply factional. Within its ranks sits a faction of African Nationalists who have deliberately pushed racist narratives that shaped policy. Alongside its other allies, this faction has cut Coloured identity loose from the liberation mission, disrespecting Coloured people\u2019s origins as Africans.",
     "This faction has influenced and passed laws and adopted policies that tell ordinary Black Africans it is acceptable to be unsympathetic to our unemployment struggle, to act with bullying arrogance, and to ignore our children\u2019s failure to receive bursaries and educational aid. Add to this the many other discriminatory practices that trample on the basic rights of Coloured people.",
     "The deceptive politics, marginalisation and political neglect of both the ANC and the white DA leadership have produced Coloured behavioural patterns that, according to research grounded in sound political theory, have proven self-destructive. These forces have also shaped the assumptions and stereotypes other groups hold about Coloured people, including the refusal to accept that our roots are right here on this continent.",
     "This book names what I believe we all feel but rarely say aloud: our fears, our discomfort and our reluctance to raise real grievances because we fear sounding racist or sparking racial tension. We became the group most committed to nation-building, more than any other, precisely because we are the least culturally defined group. We lack the explicit devotion, loyalty and ability to unite in defence of a tribe that other groups draw from age-old traditions and cultural practices. But this sacrifice, and our instinct to stand back first, cost us a great deal of ourselves. Our silence, our commitment to nation-building, and the integration we accepted and supported through the nineties came at a heavy price.",
+    "The One Question",
     "So if you reach for the word \u201cracism\u201d the moment someone says \u201cColoured,\u201d I need you to ease up. Ease up on the need to prove you are something other than the stereotype. You are not that word. You never were.",
     "This was never really a book about a word. It comes down to one question:",
     "After everything history has done to us, who are we prepared to become?",
@@ -893,8 +970,8 @@
     "So what is the path to liberation? It begins in the mind. Not the vote. Not the church. Not even the economy. First, the Coloured mind. A reprogramming. A rejection of borrowed shame. A radical ownership of our scars and our story. A refusal to be manipulated by parties, pastors, or promises that treat us as pawns.",
     "Our liberation demands political independence: movements built by us and for us. Cultural pride: restoring the music, language, food, and faces they erased. Historical clarity: rewriting the stories they buried. Economic justice: our fair share, not a seat we have to beg for. And psychological healing: naming the pain, breaking the silence, raising our heads.",
     "We must commit: to ourselves, to our children, to the next hundred years. If we do not, we die out. Not physically. Spiritually.",
-    "In Plain Words",
-    "I say we\u2019ve made it through hard times, but got too comfortable, and let our children fall behind while we stayed quiet. Coloured people carry the mixed blood of many peoples in this country\u2019s history, and that is not something to be ashamed of. It is something powerful. Real freedom starts in the mind: knowing our story, being proud of it, and refusing to let anyone else define us.",
+    "The Teaching of Quiet Comfort: Becoming Conscious of What It Costs Our Children",
+    "The teaching of this chapter is that comfort is not peace. We came through hard times, then grew comfortable, and every quiet year was a year our children were left to fall behind. Become conscious of the silence we mistake for safety. Know that the mixed blood of many peoples in this country\u2019s history is not a shame to hide but a power to claim. Real freedom starts in the mind: know your story, be proud of it, and refuse to let anyone else define you.",
     "Chapter 4: Bastards of History or Bridge of Humanity?",
     "What one age calls a broken thing, the next age may call a beginning.",
     "We were never the wreckage. We were always the bridge.",
@@ -913,8 +990,8 @@
     "Why did they fear our identity? Because if you could trace your lineage to Europe, Africa, Asia, and the indigenous nations all at once, how could they define you? They could not. So they labelled us Coloured, and made the word feel like dirt in our mouths. We are reclaiming it now, not as their insult, but as our instruction. We are Coloured because we reflect the colours of the world.",
     "We were not planned. We were not asked for. We emerged anyway, forged through oppression, baptised in poverty, shaped by survival. We are not a broken piece of someone else\u2019s people. We are a people. South Africa needs to be taught that, and the world needs to know it too.",
     "And if we claim it fully, we become what we were always meant to be: not a race, not a vote, not a label, but the next stage in humanity\u2019s evolution. This is the Coloured Bible. Take pride in that thought. Bathe in it. Adopt it. And tell others: we are the evolution.",
-    "In Plain Words",
-    "I say we were never a mistake, even though history once called us the \u201cbastards of history.\u201d Our Khoisan, African, European, and Asian ancestors were forced together through conquest and slavery, not by choice. But what came out of it is a real, whole people, not a broken piece of someone else\u2019s story. Being mixed is our strength, and it makes us living proof that race was never meant to divide people forever.",
+    "The Teaching of Origin: Becoming Conscious of the Names History Gave Us",
+    "The teaching of this chapter is that you were never a mistake, even when history called us the \u201cbastards of history.\u201d Our Khoisan, African, European, and Asian ancestors were forced together through conquest and slavery, not by choice. But what came out of it is a real, whole people, not a broken piece of someone else\u2019s story. Become conscious of every label, joke, and story that treats our mixture as a flaw, and refuse to laugh along. Being mixed is our strength, and it makes us living proof that race was never meant to divide people forever.",
     "Chapter 5: Survival in the Shadows",
     "Even the thread no one sees is the one holding the garment together.",
     "We were never invisible. We were only unseen.",
@@ -934,8 +1011,8 @@
     "We survived apartheid, relocation, addiction, joblessness, betrayal. But survival becomes a prison when it stops you from dreaming. We learned to laugh at our pain, to be stylish in our struggle, to make music out of misery. Survival culture kept us frozen too: always adapting, never confronting. I am asking you to break that pattern. We are not just survivors. We are architects.",
     "There is a generation rising that is not scared. They speak Coloured and proud, wearing their curls, their mixed skin, their slang, their identity like a badge. They are unlearning what was forced into our DNA, finding the language to say: we are enough, we are valid, we are the future.",
     "This book is not just for the elders. It is a love letter to the youth, a message in a bottle that says: we failed to protect your name. Now we are building a new one.",
-    "In Plain Words",
-    "I say Coloured people have been treated as invisible by both major political forces in this country, blamed for poverty and addiction instead of asked why those things exist here. Some of our pain turned inward, into gossip, drinking, and tearing each other down, because there was nowhere else to put it. That is not who we are. It is what happens to a people nobody helps to heal. A new generation is done hiding and done apologising.",
+    "The Teaching of Invisibility: Becoming Conscious of Being Blamed for What Was Done to Us",
+    "The teaching of this chapter is that a people who are ignored will turn their pain inward. Become conscious of how often Coloured people are blamed for poverty and addiction, while nobody asks why those things exist here. Both major political forces have treated us as invisible, and the pain that had nowhere to go became gossip, drinking, and tearing each other down. That is not who we are. It is what happens to a people nobody helps to heal. Stop hiding, stop apologising, and start asking the question that was never asked.",
     "Chapter 6: Reclaiming the Word \u201cColoured\u201d, From Shame to Signal",
     "A name given in scorn can still be spoken in pride, once its rightful owner decides so.",
     "We did not choose the word. We choose what it means now.",
@@ -948,8 +1025,8 @@
     "They try to erase us because if we ever fully understood what we are, we would become unbreakable. We are not \u201cbetween Black and white.\u201d We are not \u201cnot enough of either.\u201d We are the bridge, and every bridge scares those who rely on walls. Locked in our name is a library of resistance. Locked in our culture is the memory of empires, resistance, and renewal. When we let others define \u201cColoured,\u201d we hand them the pen to write our children\u2019s future. It is time to take the pen back.",
     "Rebirth Through Ownership",
     "To be Coloured today must no longer mean inherited trauma. It must be an intentional stance, something we own, not explain. Something we develop, not deny. This book is not about romanticising suffering. It is about making meaning out of pain, and building a people from what was meant to stay fragments. We are the authors now. We write the script. Coloured is not a label. It is a language of the future.",
-    "In Plain Words",
-    "I say the word \u201cColoured\u201d was made to feel like an insult, but it does not have to stay that way. Our mixed origin is not confusion. It is what naturally happens when history throws different peoples together in one place. We get to decide what the word means from here, not the people who once used it to put us down.",
+    "The Teaching of the Name: Becoming Conscious of Who Decides What \u201cColoured\u201d Means",
+    "The teaching of this chapter is that a name belongs to whoever decides what it means. The word \u201cColoured\u201d was made to feel like an insult, but it does not have to stay that way. Our mixed origin is not confusion. It is what naturally happens when history throws different peoples together in one place. Become conscious every time the word is used to put us down, and every time we flinch at it. We decide what it means from here, not the people who once used it against us.",
     "Chapter 7: Coloured Is Not Khoisan, Why the Difference Matters, and Why Both Deserve Their Own Name",
     "Not every root that feeds a tree grew from the same seed.",
     "To honour one people, you need not erase the other.",
@@ -973,8 +1050,8 @@
     "South Africa needs a new, clearly defined understanding of what it means to be Coloured, and a separate, equally clear definition of what it means to be Khoisan. Both must be built by representatives of both communities together, not imposed from outside by government, and not settled by whichever side argues loudest online.",
     "That process should lead somewhere concrete: a shared or parallel tribal leadership council, where Khoisan chieftaincies and Coloured community leadership sit at the same table, on equal footing. Each would represent its own people\u2019s specific interests, land claims, cultural preservation needs, and political voice, while recognising the deep, real overlap in shared history between them.",
     "Two peoples. One shared wound, in large part. Two distinct identities, each deserving its own name, its own dignity, and its own seat at the table. That is not disunity. That is the beginning of both peoples finally being seen clearly, by each other and by the nation around them, for exactly who they are.",
-    "In Plain Words",
-    "I say not every Coloured person has Khoisan blood, and that\u2019s okay. Coloured was never one bloodline. It was always many different mixtures. San, Nama, and Griqua people are living nations with their own identity, not a costume any Coloured person can put on. Telling every Coloured person to just \u201cbecome Khoisan\u201d disrespects both groups. It treats real Khoisan nationhood as something borrowed, and it tells Coloured people with no Khoisan ancestry that their own history doesn\u2019t count. The fix is not to argue about it forever. It\u2019s to sit down together, Coloured and Khoisan leaders, and agree on clear, separate definitions and a shared leadership council, so both peoples finally get named and respected, by law and by each other.",
+    "The Teaching of Separate Names: Becoming Conscious of Borrowed Identities and Blurred Lines",
+    "The teaching of this chapter is that respect means separate names. Not every Coloured person has Khoisan blood, and that is okay. Coloured was never one bloodline. It was always many different mixtures. San, Nama, and Griqua people are living nations with their own identity, not a costume any Coloured person can put on. Become conscious of every call to \u201cjust become Khoisan,\u201d because it disrespects both groups: it treats real Khoisan nationhood as something borrowed, and it tells Coloured people with no Khoisan ancestry that their history does not count. The answer is not to argue forever. Coloured and Khoisan leaders must sit down together and agree on clear, separate definitions and a shared leadership council, so both peoples are finally named and respected, by law and by each other.",
     "Chapter 8: The Two-Headed Devil, How Black Institutional Domination and White Capital Supremacy Together Built Coloured and Khoisan Poverty",
     "Every people must learn their devil\u2019s name, or they will keep mistaking his hand for fate.",
     "Name him, and he loses his best disguise.",
@@ -999,8 +1076,8 @@
     "Why This Chapter Belongs in a Bible",
     "A people cannot fight an enemy they have not been taught to name. For thirty years, Coloured and Khoisan South Africans have been told our hardship is a side effect: collateral damage in a fight between two other powers. I say otherwise. It is not a side effect. It is the design. Both heads of this devil know exactly what they are doing, and both have learned that a people taught to doubt their own unity will rarely notice they are being used by two different hands at once.",
     "Naming the devil is the beginning of standing against it. The chapters that follow are the evidence of what I have named here.",
-    "In Plain Words",
-    "I believe our hardship has two causes working together, not one. The ANC wants Black people to hold all the power, and its rules for fixing the past leave Coloured and Khoisan people out, even though we suffered the same past. The white leadership running the DA wants to keep the land, the businesses, and the money mostly in white hands, and it uses \u201cgood government\u201d as a cover story for that. Neither side plans this together on purpose. But both sides benefit from Coloured and Khoisan people staying poor, unseen, and blamed on the other side\u2019s failure. That is the devil this book is naming: not one party, but the gap both of them are happy to leave us standing in.",
+    "The Teaching of the Two-Headed Devil: Becoming Conscious of the Gap Both Sides Leave Us In",
+    "The teaching of this chapter is that our hardship has two causes working together, not one. The ANC wants Black people to hold all the power, and its rules for fixing the past leave Coloured and Khoisan people out, even though we suffered the same past. The white leadership running the DA wants the land, the businesses, and the money to stay mostly in white hands, and it uses \u201cgood government\u201d as a cover story. Neither side plans this together on purpose. But both benefit from Coloured and Khoisan people staying poor, unseen, and blamed on the other side\u2019s failure. Become conscious that the devil this book names is not one party, but the gap both of them are happy to leave us standing in.",
     "Chapter 9: The Wounds of the Devil\u2019s Design, How Political Neglect and One-Directional Integration Produced Our Social Ills",
     "A wound left to fester in silence is soon blamed on the flesh, and not the neglect.",
     "Look again. The scar has a story, and the story has an author.",
@@ -1021,8 +1098,8 @@
     "Gangsterism is the last symptom in this chain, not the first cause. Where the drug economy was left to flourish, where schools failed to hold a generation\u2019s attention and hope, where unemployment left young men with time and no purpose, gangs offered structure, protection, and income where the state offered none of the three. I do not excuse the harm gangs have done to our own communities. I refuse, just as firmly, to let that harm be blamed on Coloured nature rather than on the neglect that built the conditions in which gangs grew.",
     "Why This Chapter Had to Be Written Carefully",
     "I will not claim more than I can prove. I will not hand you a villain wrapped in certainty where only suspicion and lived experience exist. What I will do is refuse to let these wounds be read as coincidence, or as some flaw carried in Coloured blood. They are the visible result of a coercive, one-directional integration model, and a political neglect that both major powers in this country\u2019s story share responsibility for. Once you see the design, the wound stops looking like fate and starts looking like something that can, finally, be treated.",
-    "In Plain Words",
-    "I say our biggest problems (drugs, failing schools, gangs, and unemployment) didn\u2019t just happen to us by chance, and they aren\u2019t because something is wrong with Coloured people. Integration was supposed to bring the country together, but in practice Coloured communities were forced to blend into policies that didn\u2019t actually serve them, while white suburbs were protected and never had to change at all. With no real investment, no protection, and no fair shot at jobs, drugs and gangs moved into the gap that neglect left open. I don\u2019t claim to prove exactly who\u2019s to blame for every part of it, because some of it can\u2019t be proven in a courtroom. But the pattern is real, it\u2019s been lived by real people, and it deserves to be named honestly instead of blamed on us.",
+    "The Teaching of Cause: Becoming Conscious That Our Wounds Have an Author",
+    "The teaching of this chapter is that our wounds have a cause, and the cause is not our blood. Drugs, failing schools, gangs, and unemployment did not just happen to us by chance, and they are not proof that something is wrong with Coloured people. Integration was meant to bring the country together, but in practice our communities were forced to blend into policies that did not serve them, while white suburbs were protected and never had to change at all. With no real investment, no protection, and no fair shot at jobs, drugs and gangs moved into the gap that neglect left open. Become conscious of that pattern. Not every part of it can be proven in a courtroom, but it is real, it has been lived by real people, and it must be named honestly instead of being blamed on us.",
     "Chapter 10: The War for the Coloured Mind",
     "The deepest chains are the ones a mind is taught to forge for itself.",
     "This war was never fought with weapons. It was fought with whispers.",
@@ -1033,8 +1110,8 @@
     "What We Passed Down",
     "Here is our shame: we passed it on. We raised our children with our trauma still active. We told them not to rock the boat, that safety lived in staying neutral rather than becoming powerful. What did they inherit? A fragmented sense of self. A beautiful history buried under jokes and shame. A name they feel they must explain, or escape.",
     "But we are still here, and that is the miracle. The Coloured mind has not died. It has been sleeping. Now, a stirring. Now, a sound. Now, the awakening. Our children are no longer asking permission. They are no longer embarrassed by the word Coloured. They are reclaiming it, remixing it, wearing it.",
-    "In Plain Words",
-    "I say the biggest battle against Coloured people was never fought with weapons. It was fought by convincing us we were less than others. Both the ANC and the DA have used our pain, our poverty, and our silence to keep control. We were taught to stay humble instead of proud, but that is finally changing with a new generation that refuses to shrink.",
+    "The Teaching of the Mind War: Becoming Conscious of the Whispers That Taught Us to Shrink",
+    "The teaching of this chapter is that the biggest battle against Coloured people was never fought with weapons. It was fought by convincing us we were less than others. Become conscious of how both the ANC and the DA have used our pain, our poverty, and our silence to keep control, and of how we were taught to stay humble instead of proud. Unlearn it. A new generation already refuses to shrink, and each of us must refuse with them.",
     "Chapter 11: What We Must Now Teach Our Children",
     "Teach the child the truth early, or the world will teach them a lie first.",
     "What we withhold from them, someone else will happily supply.",
@@ -1058,8 +1135,8 @@
     "We voted for people who did not see you, and we stayed silent when you were hurt.",
     "We are sorry. Please forgive us. And now, let us start again, together.",
     "Repentance without action is only another form of silence. So let this apology come with a promise. No more voting for leaders who treat our schemes as places to be policed instead of healed. No more whispering about what we see. And no more waiting for someone else to build the skills, the work and the hope our children were promised.",
-    "In Plain Words",
-    "This chapter is a message to our children: we are sorry for teaching you to fit in instead of stand out. You come from every part of this country\u2019s history, and that makes you powerful, not confused. It is time we raise children who are proud to say \u201cI am Coloured\u201d without apologising for it. But first, we must tell them that we failed them, and ask for their forgiveness.",
+    "The Teaching of Inheritance: Becoming Conscious of What We Taught Our Children to Be",
+    "The teaching of this chapter is that children inherit what we teach them about themselves. We taught ours to fit in instead of stand out, and that was our failure. Become conscious of it, and teach them now that they come from every part of this country\u2019s history, and that this makes them powerful, not confused. Raise children who are proud to say \u201cI am Coloured\u201d without apologising for it. But first, we elders must be honest with them: tell them we failed them, and ask for their forgiveness.",
     "Chapter 12: From Movement to Mandate, Building the Coloured Nation",
     "A cry fades with the wind. Only a covenant survives the storm.",
     "It is time to write down what we have only ever shouted.",
@@ -1078,8 +1155,8 @@
     "The Path Forward Is Not Easy",
     "We will be mocked, accused, resisted, even by our own. Some will say we are dividing further. Others will say there are bigger issues. Still others will say, \u201cjust be South African.\u201d But we know the truth: this country has always found space for white power, and has made endless room for Black empowerment. It has never made peace with Coloured autonomy. Until now.",
     "The Coloured Bible is not just a manuscript. It is a manual for mental nation-building. We are not trying to rewrite South Africa. We are rewriting ourselves, so that the next Coloured child born into this country inherits a nation that already knows who it is, what it is, and why it matters.",
-    "In Plain Words",
-    "I say complaining about our situation is not enough anymore. We need real organisation: our own leaders, our own businesses, our own institutions that cannot be taken away or ignored. It is not about separating from South Africa. It is about building enough strength and identity that nobody can erase us again.",
+    "The Teaching of Organisation: Becoming Conscious That Complaining Is Not Enough",
+    "The teaching of this chapter is that a people who only complain can be ignored. Become conscious that complaining about our situation is not enough anymore. What cannot be taken away or ignored is organisation: our own leaders, our own businesses, our own institutions. This is not about separating from South Africa. It is about building enough strength and identity that nobody can erase us again.",
     "Chapter 13: The Cultural Engine, Language, Music, Faith, and the Soul of a People",
     "A people who forget their own song will end up dancing to someone else\u2019s.",
     "Ours was never a borrowed rhythm. It was always the original.",
@@ -1099,8 +1176,8 @@
     "Why Culture Is the Battlefield",
     "Identity is not only what you call yourself. It is what you practise, repeat, and pass down. Dilute a people\u2019s culture and you can erase their identity. Make them ashamed of it and you own their future. That is why this fight was never only about land, votes, or jobs. It is about language, sound, memory. We protect our culture because it is our power source, our resistance ritual. If we do not safeguard it, we become echoes in a land we built.",
     "You may not realise it, but everything we passed down, from \u201cjou ma se kind\u201d to the old-school songs we hum while sweeping the yard, was deliberate. It was survival code. You are not just inheriting habits. You are inheriting a civilisation, shaped under fire. Now it is your turn: to protect it, to remix it, to let it evolve without letting it disappear.",
-    "In Plain Words",
-    "I say our culture, our language, our music, our food, our humour, and our faith were never something to be embarrassed about. They were how we survived. We need to stop giving up our own culture for someone else\u2019s version of it, and start protecting and celebrating what makes us who we are.",
+    "The Teaching of Culture: Becoming Conscious of Giving Away What Is Ours",
+    "The teaching of this chapter is that our culture is how we survived, not something to be embarrassed about. Our language, our music, our food, our humour, and our faith carried us through. Become conscious of every time we trade what is ours for someone else\u2019s version of it. Stop giving it up, and start protecting and celebrating what makes us who we are.",
     "Chapter 14: The Youth Fire, When the Next Generation Stops Waiting",
     "The fire does not ask permission to burn. It only asks for air.",
     "Give it room, and watch what it lights next.",
@@ -1113,8 +1190,8 @@
     "They are not asking for leadership. They are leadership: young writers redefining identity, creatives reclaiming Kaaps in poetry, film, and theatre, activists building movements on TikTok and in WhatsApp groups. They have gone from asking, to demanding, to building. Their politics is less patient, less polite, more informed. They understand identity is also about power, resources, representation, and truth, and that nobody is coming to save them. They are already saving themselves.",
     "Not a New Generation, A Next Generation",
     "They are not rejecting us. They are upgrading us, the next link in the chain, not a break from it. We must be honest enough to step aside when needed, wise enough to walk with them when invited. We did not fail them entirely. We gave them enough to see through the lies, and they will turn that into fire. Let us bless it. Let us add fuel. Let us trust their instincts and defend their vision. They are not here to be symbols. They are here to be sovereign.",
-    "In Plain Words",
-    "I say the younger generation is not waiting for our permission anymore. They see the unfairness clearly and are already building their own movements, online and in their own communities. We did not always prepare them perfectly, but we gave them enough truth to light a fire we should now support, not control.",
+    "The Teaching of the Youth Fire: Becoming Conscious of a Generation That No Longer Waits",
+    "The teaching of this chapter is that a generation does not wait for permission. Become conscious that the younger generation is not waiting for ours anymore. They see the unfairness clearly and are already building their own movements, online and in their own communities. We did not always prepare them perfectly, but we gave them enough truth to light a fire. Our duty now is to support that fire, not control it.",
     "Chapter 15: The New Politics, Redefining Power, Reclaiming Policy",
     "Power answers only to the hand that reaches for it, never the one that waits to be given it.",
     "We have waited long enough to be handed what was always ours to take.",
@@ -1127,8 +1204,8 @@
     "We are not just political actors. We are the genetic evidence of what the world has become. Our political power should reflect that role: a bridge between races, a warning about identity manipulation, a possibility of coexistence beyond blood purity. We are not the leftovers of history. We are the prototypes of its next phase. So our politics cannot imitate theirs. It must become something new: a politics of integration without erasure, of memory and forward motion. It says: we are not here to fit in. We are here to set the terms.",
     "The Liberation Path, We Must Commit",
     "It will cost us: some comfort, some friends, some illusions. But it will give us back our name. Not \u201cColoured\u201d in their sense. Coloured in ours: a convergence of histories, a natural evolution, a new way of being human. This is not just politics. This is prophecy. And we, finally, are ready to lead it.",
-    "In Plain Words",
-    "I say we need to stop only voting and start actually governing, writing policy, leading parties, and holding real power, not just being clapped for at events. Real leadership means fighting for our people even when it is uncomfortable, not waiting for someone else\u2019s approval first.",
+    "The Teaching of Power: Becoming Conscious of the Difference Between Voting and Governing",
+    "The teaching of this chapter is that power is held, not applauded. Become conscious of the difference between being clapped for and holding power. Stop only voting, and start governing: writing policy, leading parties, and holding real power. Do not settle for being applauded at events. Real leadership fights for our people even when it is uncomfortable, and does not wait for someone else\u2019s approval first.",
     "Chapter 16: Reclaiming the Coloured Mind, From Psychological Oppression to Mental Sovereignty",
     "Know the war you are standing in, or you will mistake its wounds for your own nature.",
     "The battlefield was never inside you. It was only fought there.",
@@ -1152,8 +1229,8 @@
     "From Internalized Shame to Evolutionary Pride",
     "We are not a tragedy. We are a transformation. We did not just survive apartheid; we evolved through it. We did not just mix; we converged. We did not just adapt; we reshaped what being human could mean. This is the Natural Evolution Theory: Coloured people are not an accident. We are the genetic result of colonial impact, and potentially the blueprint for future humanity, if we choose to see ourselves that way and live accordingly.",
     "Our liberation is not a policy away, not a politician away, not a prayer away. It starts in the mind of every parent who tells their child they are enough, in the voice of every young thinker who names their condition, in the courage of every leader who puts Coloured needs first, without shame. This is our war cry. Our therapy. Our blueprint. And it begins with truth.",
-    "In Plain Words",
-    "I say there is a bigger political war going on between Black nationalist power and white conservative power, and Coloured people have stood in the middle of it for centuries, taking damage from both sides. Some of our more self-destructive habits come from that pressure, not from who we are. Healing starts with understanding this clearly, then taking our minds back before anything else.",
+    "The Teaching of Mental Sovereignty: Becoming Conscious of the War We Stand in the Middle Of",
+    "The teaching of this chapter is that our minds have been a battlefield. A bigger political war is being fought between Black nationalist power and white conservative power, and Coloured people have stood in the middle of it for centuries, taking damage from both sides. Become conscious that some of our self-destructive habits come from that pressure, not from who we are. Healing starts with seeing this clearly, and then taking our minds back before anything else.",
     "Chapter 17: Cultural Warfare, From Stolen Expression to Strategic Reclamation",
     "They can copy the sound. They cannot copy the reason it was first sung.",
     "What was taken from us in pieces must be reclaimed as a whole.",
@@ -1173,8 +1250,8 @@
     "Innovation, Not Nostalgia",
     "We do not need to go back to culture. We need to evolve it forward. Urban artists should reclaim our colours instead of mimicking global trends. Schools should teach our language alongside maths. Local food should be rebranded, elevated, owned, not just sold in backyards. Artists should stop waiting for state funding and start building their own cultural economies. We are not a subculture. We are a source culture, and it is time the world knew it.",
     "If we win every political argument and still lose our soul, we have lost the war. Cultural liberation is the true front line, because that is where the attack started. Reclaiming it means healing the mind, uniting the people, honouring the past, and building a future that is ours. Not nostalgia. Nation-building. Every song, every story, every slang, every stitch is a brick in the house we are rebuilding.",
-    "In Plain Words",
-    "I say our culture, our language, our music, our style, and our humour have often been taken, copied, and sold by others while we were made to feel ashamed of it ourselves. We need to stop hiding our own culture. We need to protect it, teach it, and build pride and businesses around it, because it was always fully ours.",
+    "The Teaching of Reclamation: Becoming Conscious of Who Profits From Our Culture",
+    "The teaching of this chapter is that what we hide, others will sell. Our culture, our language, our music, our style, and our humour have often been taken, copied, and sold by others, while we were made to feel ashamed of them ourselves. Become conscious of who profits from what we were taught to hide, and ask why. Stop hiding it. Protect it, teach it, and build pride and businesses around it, because it was always fully ours.",
     "Chapter 18: Economic Colonisation, How Coloured Labour Built the Nation But Was Never Allowed to Own It",
     "Those who lay the bricks are not always given a key to the house.",
     "It is time we asked for the keys, not another thank-you.",
@@ -1195,8 +1272,8 @@
     "Reclaiming Economic Sovereignty: A Blueprint",
     "Coloured liberation must be economic, not only political or cultural. We do not want favours. We want power. That means land ownership, for housing and business, not only farms. Capital access, real partnerships, not loans with interest that strangle us. Procurement justice, BEE recalibrated to reflect historical truth rather than electoral maps. Business cooperatives, entrepreneurs building networks and alliances instead of working in silos. And ownership education, teaching our children not just how to work, but how to own.",
     "We must stop believing \u201cwe\u2019re just not business people,\u201d \u201cwe don\u2019t trust our own,\u201d \u201cat least we have jobs,\u201d \u201cthat\u2019s just how it is.\u201d The Chinese did it. Afrikaners did it. Indians did it. We can too, but only once we unlearn those lies and start reprogramming our economic DNA. Until we own our own land, capital, and systems, our children inherit our survival. Not our sovereignty.",
-    "In Plain Words",
-    "I say Coloured people built huge parts of South Africa\u2019s economy (its farms, its factories, its fishing and construction industries) but were never allowed to actually own much of any of it. Both apartheid and the new government left us out of real wealth-building. It is time to focus on owning land, businesses, and capital, not only working inside someone else\u2019s.",
+    "The Teaching of Ownership: Becoming Conscious of Building What We Are Never Allowed to Own",
+    "The teaching of this chapter is that labour is not ownership. Coloured people built huge parts of South Africa\u2019s economy, its farms, its factories, its fishing and construction industries, but were never allowed to own much of any of it. Both apartheid and the new government left us out of real wealth-building. Become conscious of the difference between working inside someone else\u2019s economy and owning a share of it, and turn our focus to owning land, businesses, and capital.",
     "Chapter 19: Political Betrayal, Why Both the ANC and D. A. Sold Us Out",
     "Two hands can slap the same face without ever once touching each other.",
     "We have felt both. We have named neither, until now.",
@@ -1229,8 +1306,8 @@
     "We don\u2019t need more parties. We need purpose. Narrative control: stop waiting for the media to tell our story, write it, film it, teach it. Youth activation: train our young people in leadership, media, policy, and technology, so they become the narrators, not the next victims. Local government takeover: target municipal and ward elections, build independent slates of credible community organisers instead of careerists, and end D. A. and ANC domination by default. National alliance building: form a Coloured bloc across the country, not to isolate ourselves, but to negotiate power, because politics is numbers and leverage, not loyalty. Civic intelligence: run political education forums that prepare people rather than just protest, teaching the constitution, budget laws, and public access rights. Knowledge is power, and we have been deliberately undereducated.",
     "The Final Line in the Sand",
     "If we do not claim our power now, the next generation will curse us for our cowardice. We don\u2019t need permission to lead. We need conviction. We don\u2019t need pity. We need pride. And we don\u2019t need a better party. We need a political rebirth.",
-    "In Plain Words",
-    "I say both the ANC and the D. A. have used Coloured people without ever truly serving us. The ANC dismissed our struggle. The D. A. relied on our votes while a white leadership keeps the real power. Voting D. A. is not shameful, since it proves our unity is real. But it is time we demand our fair share of leadership and credit inside whichever party we support.",
+    "The Teaching of Betrayal: Becoming Conscious of Being Used Without Being Served",
+    "The teaching of this chapter is that a party that uses you is not a party that serves you. Both the ANC and the D. A. have used Coloured people without ever truly serving us. The ANC dismissed our struggle. The D. A. relied on our votes while a white leadership keeps the real power. Voting D. A. is not shameful, since it proves our unity is real. But become conscious of what your vote is buying, and demand our fair share of leadership and credit inside whichever party we support.",
     "Chapter 20: The Myth of Our Disunity",
     "In apartheid SA we shut down a Province under the UDF, In the new SA, the power of our vote build the DA, and we took a Province. So how did it come that we got stuck in an argument that we possess not the ability to unite, and what magic made us believe we never had a majority right to also lead and demand ownership of what we have build.",
     "A people mistake their own strength for weakness when they fail to convince themselves they possess that power, and named it aloud. In this chapter, I will name it out aloud for you. All you have to do is to become conscious about it.",
@@ -1290,8 +1367,8 @@
     "We are not a disunited people. We are a captured one.",
     "That distinction matters, because the two problems need entirely different remedies. Disunity would mean we need to learn how to organise. We do not need that lesson. We have been organising with terrifying discipline since 1999, and before that, in 1983, under the UDF, when one call from one man moved us to make a province ungovernable. What we need is to stop mistaking the discipline itself for the goal. A vote that is not conditional is not power. It is a subscription. Fifteen years of unconditional loyalty has bought us a housing backlog measured in centuries, and unemployment measured in half of every second household on the Cape Flats.",
     "The chapters ahead deal with what comes next: what it would mean to finally turn this proven, weaponisable unity toward our own community\u2019s non-negotiable terms. We would stop handing it over, election after election, out of a fear that was put there on purpose, by people who knew exactly what they were doing. But before we can redirect this power, we have to stop lying to ourselves about not having it. We built a province. We once made a province ungovernable. The only thing we have not yet done is build it for ourselves.",
-    "In Plain Words",
-    "I have shown here that Coloured people already know how to unite, and I have two proofs. We won an entire province with our votes and kept it for over fifteen years. And in 1983, answering Boesak\u2019s call, we joined the UDF and made the Western Cape ungovernable for the National Party. The problem was never disunity. It is that our unity has been used to protect other people\u2019s interests instead of our own, while we were taught to see ourselves as guests in a party that stands on our backs. A party that belongs to the liberal democratic family should not run a Coloured-majority base with a minority at the top and call that democracy. Once we see that clearly, we can finally aim our real political power toward ourselves.",
+    "The Teaching of Unity: Becoming Conscious That We Already Know How to Unite",
+    "The teaching of this chapter is that the claim that Coloured people cannot unite is a myth, and our own history is the proof. We won an entire province with our votes and kept it for over fifteen years. And in 1983, answering Boesak\u2019s call, we joined the UDF and made the Western Cape ungovernable for the National Party. The problem was never disunity. It is that our unity has been used to protect other people\u2019s interests instead of our own, while we were taught to see ourselves as guests in a party that stands on our backs. Become conscious that a party that belongs to the liberal democratic family should not run a Coloured-majority base with a minority at the top and call that democracy. Once we see that clearly, we can finally aim our real political power toward ourselves.",
     "Chapter 21: How We Lost Our Soul and How We Rebuild It, Identity Through Art, Memory, and Storytelling",
     "A mirror covered in dust still holds the very same face underneath.",
     "Wipe it clean, and look again.",
@@ -1309,8 +1386,8 @@
     "Coloured youth are not just addicted to drugs. They are addicted to self-erasure, because pain with no story becomes poison. Culture is the antidote. When a child sees themselves as the protagonist, they act differently. When a father hears his music respected, he walks differently. When a community reads its own truth in books, it rises differently.",
     "Culture Is the Soul of Liberation",
     "We will not beg for recognition. We will not wait for permission. We are the storytellers now, because whoever controls the story controls the future, and we are done being background characters in someone else\u2019s version of South Africa.",
-    "In Plain Words",
-    "I say our art, our language, and our stories were pushed aside and forgotten, on purpose, which made it easier for others to tell lies about who we are. Rebuilding our culture, our museums, our music, and our own version of our own history is not just nice to have. It is how we take our identity back and stop anyone else from writing our story for us.",
+    "The Teaching of Memory: Becoming Conscious of Whose Hands Are Writing Our Story",
+    "The teaching of this chapter is that whoever tells your story shapes your identity. Our art, our language, and our stories were pushed aside and forgotten on purpose, which made it easier for others to tell lies about who we are. Become conscious of who is telling our story today. Rebuilding our culture, our museums, our music, and our own version of our own history is not just nice to have. It is how we take our identity back and stop anyone else from writing our story for us.",
     "Chapter 22: The Collective Coloured Consciousness",
     "A people who wait to be defined will spend their whole life answering to someone else\u2019s name for them.",
     "It is time we answered only to our own.",
@@ -1336,8 +1413,8 @@
     "Why the Coloured Conscious Must Rise",
     "That is why the Coloured Conscious must rise, not out of hate, not out of division, but out of a need to survive, to protect our identity, restore our reputation, and take our rightful place in this country\u2019s future. We are not asking for favours. We are demanding what is ours. We are done being politically neutralised and economically sidelined. We are not less sensitive to racism. We have just been taught to tolerate more pain. Now we are teaching ourselves to see clearly, speak boldly, and stand collectively.",
     "This is why a collective Coloured consciousness is not just timely. It is urgent. We need to see clearly. Speak boldly. Organise unapologetically. Reclaim our place. And stop letting others define us or use us.",
-    "In Plain Words",
-    "I say other people, Black and white, have always been the ones deciding what being Coloured means, and that has to stop. We have not yet built enough of our own institutions to protect and support our own people, the way other groups have. It is time to become politically aware, protect our own, and stop mistaking someone else\u2019s definition of us for the truth.",
+    "The Teaching of Self-Definition: Becoming Conscious of Letting Others Define Us",
+    "The teaching of this chapter is that a people who wait to be defined will answer to someone else\u2019s name for them. Other people, Black and white, have always been the ones deciding what being Coloured means, and that has to stop. We have not yet built enough of our own institutions to protect and support our own people, the way other groups have. Become politically conscious, protect your own, and stop mistaking someone else\u2019s definition of us for the truth.",
     "Chapter 23: The Covenant, A Closing Word",
     "Every covenant is written twice: once in words, and once in what its people choose to do next.",
     "This is where our ink finally meets our footsteps.",
@@ -1353,8 +1430,8 @@
     "We were forged, not formed. We were the evidence, not the accident. And from here, we are the authors.",
     "The covenant is signed, not in ink, but in how we live from this page forward.",
     "This is our new beginning. Let it be written.",
-    "In Plain Words",
-    "This chapter is the emotional heart of the book: a promise to stop raising our children on apology, and start raising them on pride, memory, and inheritance instead. It says our story is not finished, that we are the authors of it now, and that living differently starting today is how a covenant like this actually gets signed.",
+    "The Teaching of the Covenant: Becoming Conscious That a Promise Is Signed by How We Live",
+    "The teaching of this chapter is that a covenant is signed by how we live, not by what we say. It is a promise to stop raising our children on apology, and start raising them on pride, memory, and inheritance instead. Our story is not finished, and we are the authors of it now. Become conscious that words alone sign nothing. Start living differently today.",
     "Chapter 24: Facing the Devil, A New Collective Coloured Consciousness for What Comes Next",
     "To know your enemy fully is not hatred. It is the beginning of peace.",
     "Now that he is named, here is how we stand against him.",
@@ -1384,12 +1461,15 @@
     "Teach it to your children before the world teaches them silence instead. Sit your sons and daughters down and tell them: you are not the leftover of history, you are its evidence. And no devil, however old, however well-dressed, however loudly it claims to speak for you, shall write your story without your hand upon the pen.",
     "This is not the end of the reckoning. This is the beginning of the reclaiming.",
     "Let it be so.",
-    "In Plain Words",
-    "Here is exactly what I believe we need to do next: raise politically aware children, stop supporting policies and parties that only use us without serving us, name the people and industries that hold us back, and build a real, organised negotiating power through a Council of Elders. It asks every Coloured person, whichever party they support, to fight for real influence inside it, and stop settling for simply being used by it.",
+    "The Teaching of Facing the Devil: Becoming Conscious of What Standing Against Him Demands",
+    "The teaching of this chapter is that naming the devil is only the beginning, and standing against him is the work. Become conscious of what that work demands: raise politically aware children, stop supporting policies and parties that only use us without serving us, name the people and industries that hold us back, and build real, organised negotiating power through a Council of Elders. Every Coloured person, whichever party they support, must fight for real influence inside it, and stop settling for simply being used by it.",
     "Chapter 25: The Cousins Across the Water, Why African Americans Are Our Example",
     "They crossed an ocean in chains and built a culture the whole world now sings.",
     "We were moved by law, and we are still learning how to build.",
     "Before this book ends, I want to take you across an ocean. There is another people who were made by the same forces that made us. They walked a road we recognise at every turn, and they got further down it than we have. They are the African Americans. I am not asking you to worship them. I am asking you to study them, the way a young runner studies one who has already run the race.",
+    "This chapter is built in three parts. Part One lays their scars beside ours, so you can see for yourself how closely the two evolutions run. Part Two follows what they did with those scars, because that is the road we are meant to learn from. Part Three holds up the mirror and asks what we now do with what we have seen.",
+    "Part One: The Same Scars",
+    "Start with the wound. A discriminatory past does not leave random marks on a people. It leaves the same marks, in the same places, whoever the people are: a name taken away, a home taken away, a family broken, a young man left with nothing to do, a street that turns on itself. Read what follows slowly, and notice how little of it needs translating.",
     "Cousins of Mixed Blood",
     "African Americans are also a people of mixed origin. Their roots are mostly African, but genetic studies suggest that the average African American carries roughly a quarter European ancestry, along with some Native American blood. Like us, they were born from the cruellest meeting of peoples that colonialism produced: enslavement, forced labour, and the ownership of one human being by another.",
     "What differs is how the law answered that mixture. In America, it invented the one-drop rule. Any known African ancestry made you Black, whatever else was in your blood. The middle was erased. In South Africa, apartheid did the opposite. It invented the middle, and wrote Coloured into law through the Population Registration Act of 1950. Two opposite tools, one purpose. The mixed people had to be controlled.",
@@ -1419,6 +1499,20 @@
     "Our children heard it and recognised themselves. Cape Town\u2019s hip hop was already speaking in our own language by the late 1980s, when Prophets of da City came out of the Cape Flats. Today Kaaps rap, Afrikaaps and the dance moves of our neighbourhoods do the same work.",
     "None of this is new for us. The Cape Minstrel Carnival grew partly out of the enslaved people\u2019s one day of freedom at the New Year, and our ghoema beat has always carried what we could not say out loud. When a people are given no safe way to speak, they sing, rap and dance the truth.",
     "But we must be honest about the danger too. The same music that tells the truth can also sell a lie. When a rapper\u2019s story of survival becomes a script for killing, children copy the script. Others have always profited from selling our pain back to us as entertainment. We must teach our children to be the author, and never the product.",
+    "The Scars Side by Side",
+    "Here is the whole of Part One in one table. Read across each row.",
+    "Where we began. African Americans: Mixed people born from enslavement and forced labour. Coloured South Africans: Slavery at the Cape, from the 1650s until 1834, and the same cruel meeting of peoples.",
+    "How the law sorted us. African Americans: The one-drop rule: the middle was erased. Coloured South Africans: The Population Registration Act of 1950: the middle was invented.",
+    "How we were moved. African Americans: Redlining, highways and \u201curban renewal\u201d Coloured South Africans: The Group Areas Act: about sixty thousand cleared out of District Six.",
+    "Policed, not helped. African Americans: Harder, more militarised policing, ending in mass incarceration. Coloured South Africans: The army called onto the Cape Flats, and the same pull toward prison for our young men.",
+    "The order the abandoned built. African Americans: The Crips and the Bloods, Los Angeles, around 1970. Coloured South Africans: The Cape Flats gangs, born of the forced removals.",
+    "Drugs that change shape. African Americans: Heroin, then crack, then fentanyl. Coloured South Africans: Dagga and mandrax, then tik.",
+    "Anger turned inward. African Americans: Young Black men killing each other over corners, colours and pride. Coloured South Africans: Drive-bys and gang wars that empty whole streets.",
+    "The beat as testimony. African Americans: Hip hop, born in the Bronx in 1973. Coloured South Africans: Kaaps rap, ghoema and the Klopse.",
+    "The name. African Americans: Colored, then Black, then African American: they named themselves. Coloured South Africans: Coloured: a word we are still deciding to own.",
+    "Nine rows, two peoples, one story. The details change. The scars do not. This is why I call them our mirror.",
+    "Part Two: The Guide, What They Did With Their Scars",
+    "A scar tells you what happened. It does not tell you what comes next. That is decided by what a people do with the pain. Our cousins went through each of these stages before us, and they have already shown us what works and what only costs more. What they lived through should not be admired from a distance. It should be used as a guide.",
     "What They Built While the World Watched",
     "Now look at what they built. Several Southern states made it a crime to teach an enslaved person to read. Yet when freedom came, they built schools almost overnight. Howard University opened in 1867, and Fisk and Morehouse followed. About a hundred historically Black colleges still stand today. They built churches that became the headquarters of their organising. They built mutual aid societies, insurance companies like North Carolina Mutual in 1898, banks, newspapers and businesses.",
     "In Greenwood, Tulsa, they built a business district so successful that it was called Black Wall Street. In 1921, a white mob burned it to the ground. They rebuilt it. Madam C. J. Walker turned a hair-care business into one of the first fortunes made by a self-made woman in America. John H. Johnson built the Ebony and Jet publishing empire. Berry Gordy built Motown from a small family loan.",
@@ -1441,11 +1535,18 @@
     "Fourth, vote as a people with a list of demands, not as a favour to anyone. A bloc that cannot be taken for granted cannot be ignored.",
     "Fifth, stay united across shade, class and neighbourhood. They have their own divisions, and they still built a shared fate. We must do the same, across the Cape Flats, the suburbs, the farms and the small towns.",
     "Sixth, be patient in years and impatient in effort. Their wealth took generations to build. Start now, so that our grandchildren inherit something that needed nobody\u2019s permission.",
+    "Part Three: The Mirror and the Guide",
     "The Mirror",
     "Hold the African American story up like a mirror and look closely. You will see a people made by cruelty, sorted by law, moved from their homes, policed instead of helped, pulled into the drug trade by hunger and into gangs by the search for a family, and tempted to turn on one another. You will see children who rap and dance their pain. And you will see something more: a people who learned to stand together, to look after each other like brothers and sisters, to build wealth, and to become the best in every field they were kept out of.",
     "We are not identical. But in every sense that matters for survival, we are their reflection. What they achieved can become our story, if we start to respect what it means to protect our identity, our dignity and our reputation, and if we keep watch over the children who carry that name.",
-    "In Plain Words",
-    "The African American is the mirror, and we are the reflection. They have shown us what is possible. If they could build from chains, we can build from the Cape Flats.",
+    "The Guide",
+    "The mirror shows us where we are. The guide tells us where to go. Let what they already lived through do both jobs for us.",
+    "First, let it warn us. What hit them reached us: the same sorting, the same removals, the same gangs, the same drugs that change shape, the same anger turned inward. If it came to us the same way, we should expect the next stages to come the same way too, and be ready for them: the pull toward prison, the harder policing, a wealth gap that outlasts every victory. A people who have read the map are not surprised by the road.",
+    "Second, let it save us time. They tried marches, laws, schools, banks and bloc votes, and they know which of them carried the weight. We do not have to relearn that over another hundred years. We can start where they arrived.",
+    "Third, let it give us courage. They climbed out of chains, and out of the ashes of Greenwood. A people who have done that have shown that the bottom is not a permanent address.",
+    "That is why the Plan Forward that follows borrows from them openly: schools of our own, funds we raise ourselves, institutions that hold our money and our law. The mirror has shown us the scars. The guide now shows us the work.",
+    "The Teaching of the Mirror: Becoming Conscious That What Was Built From Chains, We Can Build",
+    "The teaching of this chapter is that another people\u2019s journey can be our guide. The African American is the mirror, and we are the reflection. They have shown us what is possible. Become conscious that if they could build from chains, we can build from the Cape Flats.",
     "The Plan Forward",
     "Everything before this page named what was done to us. This page names what we must now do.",
     "A people cannot heal on complaint alone. Diagnosis without a plan is just another kind of paralysis, and we have been paralysed long enough. So here is the plan. Not a suggestion. Not a hope. A mandate.",
@@ -1476,7 +1577,7 @@
     "The Plea",
     "To every elder who reads this and recognises themselves in one of these seven callings: we are not calling you because you agreed with each other. Many of you did not, and some of you still do not. We are calling you because your political and leadership wisdom, hard won over decades, and your standing among our people are needed now, regardless of which side of any argument you once stood on. Whatever you were branded, by your critics or by history, you share something larger than any of those old divisions: an identity, a reputation, and a people still standing in the trenches of a fight for power between forces far bigger than any one of us.",
     "That shared ground is where this council must be built. Come stand on it with us.",
-    "The Council does not invent this mandate from nothing. It inherits the Five Pillars I named at the start of the journey, back when we first called ourselves a mandate rather than a movement: Identity Reclamation, Mental Liberation, Economic Self-Reliance, Cultural and Political Autonomy, and Inter-generational Continuity. Everything that follows in this plan (the centres, the curriculum, the boerewors stands, the reculturalised table) answers to one of those five pillars. The Council\u2019s job is not to add a sixth. It is to make sure none of the five is ever again left to chance.",
+    "The Council does not invent this mandate from nothing. It inherits the Five Pillars I named at the start of the journey, back when we first called ourselves a mandate rather than a movement: Identity Reclamation, Mental Liberation, Economic Self-Reliance, Cultural and Political Autonomy, and Inter-generational Continuity. Everything that follows in this plan (the centres, the curriculum, the schools of our own, the boerewors stands, the reculturalised table) answers to one of those five pillars. The Council\u2019s job is not to add a sixth. It is to make sure none of the five is ever again left to chance.",
     "The Centres",
     "In every poorer Coloured area, a development centre must open its doors the moment the school bell rings, and it must not close before half past five.",
     "These centres are not for every child. They are, first, for the ones who need them most: children of parents who work but still cannot make ends meet, children of parents who are unemployed and cannot put food on the table, and children whose homes are marked by substance abuse. They are for every child for whom home is not a safe place to simply exist after school. No child should be sent back into a house that is still traumatising them while a better option sits empty three streets away. Until no later than five-thirty, every day, these children have somewhere to be that is not the street and not a house that is hurting them.",
@@ -1484,6 +1585,14 @@
     "Inside these centres, our children will be taught what no public school curriculum has ever offered them.",
     "They will be taught how to navigate interracial relations: how to name racism when it happens to them, and respond without losing themselves in the process. They will be taught how to recognise language bullying, the kind that happens in a room where someone assumes a Coloured child cannot understand the language being used to mock them. They will be taught how to recognise stereotype bullying, the assumptions other races carry into every interaction, and how to answer it with clarity instead of shame. And they will finally be taught the thing their own schools never gave them: Coloured pride, Coloured culture, Coloured history, practised, not just spoken about. Alongside this, they will be taught, directly and without euphemism, what gang culture costs and what drugs cost, before either one gets the chance to make the offer first.",
     "This is not extracurricular. This is the curriculum the system never wrote for them. We are writing it now.",
+    "Schools of Our Own",
+    "Our cousins did not wait for the gates of higher learning to open for them. When those gates stayed shut, they built Howard, Fisk, Morehouse and about a hundred colleges like them, and those colleges turned out the teachers, lawyers, doctors and leaders who carried their people forward. We must do the same, and the plan begins with one clear task: to open specialised institutions of higher learning for our most educationally gifted young people.",
+    "These must be built to find the gifted Coloured child early, and to streamline that child, without delay or detour, through to qualification: in mathematics, the sciences, engineering, medicine, law, technology and the skilled trades this country keeps saying it is short of. They must offer bridging programmes, mentorship, accommodation and funded places, so that a brilliant child from the Cape Flats, the farms or the small towns is carried through, and not stopped at the gate by a bursary list or a hiring rule that was never written with that child in mind. We will not wait for the limits to be lifted. We will build a route around them, and we will make sure that route is properly registered and accredited, so that every qualification it produces carries full weight in the world.",
+    "Who Pays: The Funders and the Fund",
+    "Schools cost money, and the money must be asked for openly, by people who have earned the right to ask. Their story shows how. Between 1912 and 1932, Booker T. Washington and the Rosenwald Fund helped build nearly five thousand schools for Black children across the American South, on one rule: the money came as a match, and the Black communities had to raise their own share. Then, in 1944, the presidents of the private Black colleges pooled their small appeals into one, the United Negro College Fund. Its first campaign raised $765,000, three times what the colleges had managed separately the year before.",
+    "We must go to funders in the same spirit: corporate social investment budgets, charitable foundations, philanthropists, and Coloured professionals and business owners who made it out, at home and abroad. Go to them with a plan, with audited books, and with proof that we have put in our own share first. Let every church, club, burial society and workplace be a place where ordinary people give. A Coloured Education Fund, run by people our communities trust and kept with open books, means a pensioner\u2019s gift and a company\u2019s gift land in the same place, and both can see where it went.",
+    "From the Centre to the Campus",
+    "This is where the centres described above become more than a safe place after school. Wherever a centre finds a child with unusual gifts, that child must not be left to the luck of whichever school they happen to attend. The centre spots the gift, the scholarship carries it, the specialised institution trains it, and the graduate comes back. That is the pipeline, and every link in it must be ours. Each graduate must also make a pledge: to mentor the next child in line, and to give to the Education Fund once they are earning. Their women\u2019s clubs called it \u201cLifting as we climb.\u201d We will call it the rule of the road.",
     "Where the Money Doesn\u2019t Move",
     "Look honestly at the map, and a hard truth appears: our areas are not economic hubs. Not because our people lack the hustle. Because we lost the culture that turns a community into a marketplace.",
     "Walk through Gugulethu on any given weekend and you are walking through an economy, not just a neighbourhood. Money moves there, in totals that outpace entire sections of the city centre, faster and heavier than Cape Town CBD or Century City manage in the same weekend. Wallacedene outperforms Brackenfell. Soweto moves more than Joburg itself. These are not wealthy suburbs. They are dense, informal, and relentlessly economically alive, because the culture inside them was never allowed to die. People cook together, sell together, eat in the street together, and every plate sold is a transaction, every transaction a livelihood, every livelihood a thread holding the community\u2019s economy together.",
@@ -1493,6 +1602,12 @@
     "The plan forward must rebuild this on purpose.",
     "We need boerewors stands, meat markets, and braai points that belong to us, run by us, feeding us, the same way the meat trade feeds Wallacedene and Bloekombos every single weekend. We need community dinners, not as a nostalgic once-a-year event, but as a standing fixture. We need streets and courtyards where people eat together on a Friday or a Sunday because that is simply what is done here, the way it is done in every township economy that never let this culture slip. We need our own informal markets, our own street-food economy, our own weekend trade in meat, fish, koeksisters, gatsbys, and every dish that already carries our name, sold by us, to us, first.",
     "None of this requires permission from government or investment from outside. It requires us deciding that eating together, trading together, and cooking together is not a lesser way of building an economy. It is the way every economy that surrounds us was actually built. We do not need to invent this. We need to reculturalise it, and let the money finally start moving the way it moves everywhere around us.",
+    "Borrowing the Rest of the Toolbox",
+    "Their schools did not stand alone. Four more tools did as much work, and each of them can be started here.",
+    "Our own money. They built mutual aid societies, insurance companies and banks, because a people whose savings sit in separate pockets build nothing. Many of us already belong to burial societies, savings clubs and church funds. Bring that strength together in properly registered cooperatives that can lend to a business, back a young entrepreneur and pay a bursary.",
+    "Our own lawyers. Thurgood Marshall did not win by shouting. His legal team took segregation to court, case by case, until Brown v. Board of Education in 1954. The Legal Eagles called to our Council of Elders are the ones to lead a Coloured legal defence fund that does the same with the laws and policies that shut our people out.",
+    "Our own voice. They built newspapers and publishing houses, so that their story was told by their own hand. We need our own papers, radio, film and online platforms, funded by our own people, so that we are no longer a story told about us by others.",
+    "Our own vote. Carry it with a written list of demands. A bloc that arrives with its demands in writing cannot be taken for granted. Let the Council of Elders carry that list to every party, before every election.",
     "From Screens to Streets",
     "And to everyone who already agrees with every word of this book, scrolling past it in a Facebook group, nodding along in a comment thread: agreement typed into a phone changes nothing on its own. If your convictions match what is written here, this cannot stay a remote friendship between usernames. Find each other. Meet each other. Organise with the people in your own area who believe what you believe, and turn that shared conviction into the council, the centre, the mentor, the volunteer hour this plan actually needs.",
     "The book ends here. The work it was written to start begins now.",
@@ -1508,7 +1623,7 @@
     "You were shown your children, and told the truth about what we owe them, and what we have, until now, too often failed to give.",
     "You were shown your own political power, proven, documented, undeniable, and told, without flinching, exactly how that power has been used against you by hands you trusted and hands you never did.",
     "You were shown your elders, called back to the table not because they agreed with one another, but because a people in the trenches cannot afford to keep discarding its wisest voices over old arguments that history has already moved past.",
-    "And you were shown a plan. Not a wish. Not a prayer offered up and left to answer itself. A plan, with centres and councils and covenants inside it, built to be lived rather than merely believed.",
+    "And you were shown a plan. Not a wish. Not a prayer offered up and left to answer itself. A plan, with centres and schools and councils and covenants inside it, built to be lived rather than merely believed.",
     "This is where every other book like this one would simply end. This one does not, because a Bible does not conclude with information. It concludes with a demand.",
     "So here is the demand this book makes of you, its last and only one:",
     "Close these pages, and be different for having opened them.",
@@ -1680,6 +1795,17 @@
     "The Myth of Status",
     "A Book for the Coloured Mind",
     "How This Book Is Built",
+    "Who This Book Speaks To",
+    "Three Notions That Keep Us Divided",
+    "Myth One: We Cannot Unite",
+    "Myth Two: We Are the Most Racist Group",
+    "A Myth We Helped Spread",
+    "Myth Three: The Liberal Obsession",
+    "Those Who Run From the Word \u201cColoured\u201d",
+    "Perhaps This Has Been the Wrong Battle",
+    "A Different Starting Place",
+    "A Warning Before You Read Further",
+    "The One Question",
     "The Bridge, Not the In-Between",
     "Some Will Say This Is Divisive",
     "All of Them in One",
@@ -1687,48 +1813,60 @@
     "Why I Wrote This",
     "The Natural Evolution Theory of Coloured Identity",
     "Where the Path Begins",
-    "In Plain Words",
+    "The Teaching of Quiet Comfort: Becoming Conscious of What It Costs Our Children",
     "The Origins They Don\u2019t Teach",
     "The Khoisan Are Not Coloureds",
     "The Truth Hidden in Our Blood",
+    "The Teaching of Origin: Becoming Conscious of the Names History Gave Us",
     "The Invisible Majority",
     "The Psychological Assault",
     "The Wound We Turned Inward",
     "Addiction: The Designer Epidemic",
     "The Turning Point",
+    "The Teaching of Invisibility: Becoming Conscious of Being Blamed for What Was Done to Us",
     "The Word They Gave Us",
     "Our Identity Is Our Weapon",
     "Rebirth Through Ownership",
+    "The Teaching of the Name: Becoming Conscious of Who Decides What \u201cColoured\u201d Means",
     "Two Different Claims, Often Confused as One",
     "Why Collapsing the Two Disrespects Both",
     "A New Definition, Built Together, Not Imposed by Either Side",
+    "The Teaching of Separate Names: Becoming Conscious of Borrowed Identities and Blurred Lines",
     "The First Head: Black Institutional Domination",
     "The Second Head: White Capital Supremacy",
     "Where the Two Heads Meet",
     "Why This Chapter Belongs in a Bible",
+    "The Teaching of the Two-Headed Devil: Becoming Conscious of the Gap Both Sides Leave Us In",
     "The Drug Economy: Neglect Wearing a Needle",
     "The Schooling Crisis: Reform That Reformed Nothing",
     "Unemployment: Excluded by the Very Policies Meant to Include",
     "Gangsterism: What Grows in an Unwatched Garden",
     "Why This Chapter Had to Be Written Carefully",
+    "The Teaching of Cause: Becoming Conscious That Our Wounds Have an Author",
     "Politics as Psychological Warfare",
     "What We Passed Down",
+    "The Teaching of the Mind War: Becoming Conscious of the Whispers That Taught Us to Shrink",
     "A Word to the Elders",
     "Ask Them to Forgive Us",
+    "The Teaching of Inheritance: Becoming Conscious of What We Taught Our Children to Be",
     "The Five Pillars of the Coloured Mandate",
     "The Path Forward Is Not Easy",
+    "The Teaching of Organisation: Becoming Conscious That Complaining Is Not Enough",
     "Language, Kaaps as Code",
     "Music, Survival in Sound",
     "Faith, Not Just Religion, but Resilience",
     "Humour, Food, Ritual, Our Hidden Language",
     "Why Culture Is the Battlefield",
+    "The Teaching of Culture: Becoming Conscious of Giving Away What Is Ours",
     "Our Children Are Not Confused, They\u2019re Awake",
     "Where We Failed Them",
     "Not a New Generation, A Next Generation",
+    "The Teaching of the Youth Fire: Becoming Conscious of a Generation That No Longer Waits",
     "Why Identity Must Be Political",
     "Leadership Is Not Clean, It\u2019s Courageous",
     "Evolutionary Politics, A New Human Model",
     "The Liberation Path, We Must Commit",
+    "The Teaching of Power: Becoming Conscious of the Difference Between Voting and Governing",
     "Standing on the Battlefield",
     "Why We Are Considered Politically Naive",
     "The Disaster of Our Current Identity",
@@ -1736,6 +1874,7 @@
     "Naming the Condition",
     "Mental Sovereignty",
     "From Internalized Shame to Evolutionary Pride",
+    "The Teaching of Mental Sovereignty: Becoming Conscious of the War We Stand in the Middle Of",
     "The First Target of Any Colonizer Is Culture",
     "Hijacked, Not Destroyed",
     "Cultural Confusion: The Real Weapon",
@@ -1743,6 +1882,7 @@
     "What We Must Reclaim",
     "From Cultural Shame to Cultural Strategy",
     "Innovation, Not Nostalgia",
+    "The Teaching of Reclamation: Becoming Conscious of Who Profits From Our Culture",
     "The Silent Workers of Empire",
     "Excluded by Design, Not Default",
     "The Illusion of Inclusion",
@@ -1750,6 +1890,7 @@
     "Black Capitalism, White Capitalism, and Coloured Nothingness",
     "Caught Between Two Appetites",
     "Reclaiming Economic Sovereignty: A Blueprint",
+    "The Teaching of Ownership: Becoming Conscious of Building What We Are Never Allowed to Own",
     "The ANC\u2019s Bargain: Freedom for Black Votes, Silence for Coloureds",
     "The D. A.\u2019s Deal: A Party of Two Sides",
     "A Letter to a Young Politician",
@@ -1757,6 +1898,7 @@
     "Our Own Silence",
     "The Blueprint for Political Reclamation",
     "The Final Line in the Sand",
+    "The Teaching of Betrayal: Becoming Conscious of Being Used Without Being Served",
     "The First Proof: We Built a Province",
     "The Second Proof: Boesak, the UDF, and the Province We Made Ungovernable",
     "Now Ask What We Have to Show for It",
@@ -1767,31 +1909,42 @@
     "Told We Were Guests in Our Own House",
     "The Machine That Keeps the Myth Alive",
     "The Greatest Violation of Majority Rule",
+    "The Teaching of Unity: Becoming Conscious That We Already Know How to Unite",
     "The Silent Cultural Genocide",
     "Cultural Amnesia Is Designed to Keep You Powerless",
     "Rebuilding Is Strategic, Not Cosmetic",
     "From Pain to Pride",
     "Culture Is the Soul of Liberation",
+    "The Teaching of Memory: Becoming Conscious of Whose Hands Are Writing Our Story",
     "Defined by Everyone but Ourselves",
     "When Silence Becomes Betrayal",
     "Protect Your Own, Fund Your Own, Defend Your Own",
     "Let\u2019s Make It Plain",
     "Why the Coloured Conscious Must Rise",
+    "The Teaching of Self-Definition: Becoming Conscious of Letting Others Define Us",
+    "The Teaching of the Covenant: Becoming Conscious That a Promise Is Signed by How We Live",
     "A Consciousness That Raises Conscious Children",
     "How to Deal With the Devil\u2019s Character",
     "Dealing With the ANC",
     "Understanding the Devil Before Resisting Him",
+    "The Teaching of Facing the Devil: Becoming Conscious of What Standing Against Him Demands",
+    "Part One: The Same Scars",
     "Cousins of Mixed Blood",
     "The Same Machine, Different Names",
     "Problems That Change Shape",
     "The Gang as the Family That Showed Up",
     "When the Anger Turns Inward",
     "The Beat Is the Testimony",
+    "The Scars Side by Side",
+    "Part Two: The Guide, What They Did With Their Scars",
     "What They Built While the World Watched",
     "The Honest Numbers",
     "Guard the Name",
     "What We Must Copy",
+    "Part Three: The Mirror and the Guide",
     "The Mirror",
+    "The Guide",
+    "The Teaching of the Mirror: Becoming Conscious That What Was Built From Chains, We Can Build",
     "The Establishment of a Council of Elders",
     "The Unifiers",
     "The Institution Builders",
@@ -1803,8 +1956,12 @@
     "The Plea",
     "The Centres",
     "What Must Be Taught",
+    "Schools of Our Own",
+    "Who Pays: The Funders and the Fund",
+    "From the Centre to the Campus",
     "Where the Money Doesn\u2019t Move",
     "Reculturalising the Table",
+    "Borrowing the Rest of the Toolbox",
     "From Screens to Streets",
     "Cultural and Linguistic Terms",
     "Political and Social Terms",
@@ -1821,6 +1978,7 @@
     "This Book Is For:",
     "Warning:"
   ];
+  var BOOK_SCRIPTURE_IDX = [137, 138, 180, 181, 214, 215, 234, 235, 255, 256, 269, 270, 294, 295, 320, 321, 342, 343, 354, 355, 356, 379, 380, 399, 400, 420, 421, 434, 435, 448, 449, 473, 474, 494, 495, 516, 517, 611, 612, 630, 631, 657, 658, 674, 675, 705, 706, 789, 853, 854];
   var FRONTISPIECE_VERSES = [
     "In the beginning, the ships came, and the peoples of this coast were scattered like seed.",
     "Out of catastrophe and thunder, nature joined the Khoi, the San, Europe and the East.",
@@ -1832,6 +1990,8 @@
   BOOK_HEADINGS.forEach(function(h){ HEADINGS_SET[h] = true; });
   var SUBTITLES_SET = {};
   BOOK_SUBTITLES.forEach(function(s){ SUBTITLES_SET[s] = true; });
+  var SCRIPTURE_SET = {};
+  BOOK_SCRIPTURE_IDX.forEach(function(i){ SCRIPTURE_SET[i] = true; });
   function isHeading(text){ return !!HEADINGS_SET[text]; }
   function isSubtitle(text){ return !!SUBTITLES_SET[text]; }
 
@@ -1950,6 +2110,7 @@
     var cls = "";
     if (isHeading(text)) cls = ' class="chapter-heading"';
     else if (isSubtitle(text)) cls = ' class="subtitle-heading"';
+    else if (SCRIPTURE_SET[seg.i]) cls = ' class="scripture"';
     var w = wordsOf(seg.i), us = unitsOf(seg.i), parts = [];
     for (var x = 0; x < us.length; x++){
       var u = us[x];
@@ -2041,12 +2202,7 @@
     if (!pageObj) return { content: "", folio: "" };
     if (pageObj.type === "cover"){
       return {
-        content: '<div class="cover-page-frame">' +
-                 '<img src="cover.jpg" alt="Book cover" class="cover-page-image">' +
-                 '<div class="ornate-corner tl"></div><div class="ornate-corner tr"></div>' +
-                 '<div class="ornate-corner bl"></div><div class="ornate-corner br"></div>' +
-                 '<div class="gothic-arch"></div>' +
-                 '</div>',
+        content: '<div class="cover-flat">' + coverFaceHtml('p') + '</div>',
         folio: ""
       };
     }
@@ -3041,10 +3197,95 @@
     if (mmoved) suppressClickUntil = Date.now() + 300;
   });
 
+
+  // ---------- Bible-style cover art (generated, no image file needed) ----------
+  // Set USE_COVER_IMAGE = true to put your own cover.jpg on the front instead.
+  var USE_COVER_IMAGE = false;
+  function coverFaceSvg(u){
+    var rays = "";
+    for (var i = 0; i < 28; i++){
+      var a = i * Math.PI * 2 / 28, r1 = 30, r2 = (i % 2 === 0) ? 62 : 48;
+      rays += '<line x1="' + (157 + Math.cos(a) * r1).toFixed(1) + '" y1="' + (92 + Math.sin(a) * r1).toFixed(1) +
+              '" x2="' + (157 + Math.cos(a) * r2).toFixed(1) + '" y2="' + (92 + Math.sin(a) * r2).toFixed(1) +
+              '" stroke="url(#gold' + u + ')" stroke-width="' + (i % 2 === 0 ? 1.1 : 0.7) + '" opacity="0.7"/>';
+    }
+    var F = "font-family=\"'Libre Caslon Text', Georgia, serif\" text-anchor=\"middle\"";
+    var corner = '<path d="M0 24 Q0 0 24 0" fill="none" stroke="url(#gold' + u + ')" stroke-width="2.2"/>' +
+                 '<path d="M0 15 Q15 15 15 0" fill="none" stroke="url(#gold' + u + ')" stroke-width="1.2"/>' +
+                 '<circle cx="6.5" cy="6.5" r="2.2" fill="url(#gold' + u + ')"/>';
+    function ttl(txt, y, size, ls, weight){
+      return '<text x="157" y="' + (y + 1.6) + '" ' + F + ' font-size="' + size + '" font-weight="' + weight + '" letter-spacing="' + ls + '" fill="#000" opacity="0.5">' + txt + '</text>' +
+             '<text x="157" y="' + y + '" ' + F + ' font-size="' + size + '" font-weight="' + weight + '" letter-spacing="' + ls + '" fill="url(#gold' + u + ')" stroke="#6b4614" stroke-width="0.35">' + txt + '</text>';
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 450" preserveAspectRatio="xMidYMid slice">' +
+      '<defs>' +
+        '<linearGradient id="gold' + u + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8e4a8"/><stop offset="0.5" stop-color="#d4a653"/><stop offset="1" stop-color="#94651f"/></linearGradient>' +
+        '<linearGradient id="lea' + u + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d5183"/><stop offset="1" stop-color="#0a2540"/></linearGradient>' +
+        '<radialGradient id="sheen' + u + '" cx="28%" cy="18%" r="85%"><stop offset="0" stop-color="#fff" stop-opacity="0.24"/><stop offset="1" stop-color="#000" stop-opacity="0.32"/></radialGradient>' +
+        '<filter id="grain' + u + '" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 -0.14"/></filter>' +
+        '<g id="corner' + u + '">' + corner + '</g>' +
+      '</defs>' +
+      '<rect width="300" height="450" fill="url(#lea' + u + ')"/>' +
+      '<rect width="300" height="450" filter="url(#grain' + u + ')"/>' +
+      '<rect width="300" height="450" fill="url(#sheen' + u + ')"/>' +
+      '<rect x="20" y="0" width="3.5" height="450" fill="#000" opacity="0.3"/><rect x="23.5" y="0" width="1.6" height="450" fill="#fff" opacity="0.12"/>' +
+      '<rect x="38" y="24" width="238" height="402" fill="none" stroke="url(#gold' + u + ')" stroke-width="3"/>' +
+      '<rect x="45" y="31" width="224" height="388" fill="none" stroke="url(#gold' + u + ')" stroke-width="1"/>' +
+      '<use href="#corner' + u + '" transform="translate(50 36)"/>' +
+      '<use href="#corner' + u + '" transform="translate(264 36) scale(-1 1)"/>' +
+      '<use href="#corner' + u + '" transform="translate(50 414) scale(1 -1)"/>' +
+      '<use href="#corner' + u + '" transform="translate(264 414) scale(-1 -1)"/>' +
+      rays +
+      '<rect x="153.2" y="58" width="7.6" height="68" fill="url(#gold' + u + ')" stroke="#6b4614" stroke-width="0.4"/>' +
+      '<rect x="136" y="76" width="42" height="7.6" fill="url(#gold' + u + ')" stroke="#6b4614" stroke-width="0.4"/>' +
+      '<circle cx="157" cy="79.8" r="4.2" fill="#0d2d4d" stroke="url(#gold' + u + ')" stroke-width="1.2"/>' +
+      ttl("THE", 176, 13, 8, 400) + ttl("COLOURED", 213, 31, 3, 700) + ttl("BIBLE", 259, 50, 6, 700) +
+      '<line x1="86" y1="278" x2="148" y2="278" stroke="url(#gold' + u + ')" stroke-width="1"/><line x1="166" y1="278" x2="228" y2="278" stroke="url(#gold' + u + ')" stroke-width="1"/>' +
+      '<path d="M157 272 L162 278 L157 284 L152 278 Z" fill="url(#gold' + u + ')"/>' +
+      '<text x="157" y="304" ' + F + ' font-size="8.6" letter-spacing="2.2" fill="#e9cf99">A HANDBOOK FOR RECLAIMING</text>' +
+      '<text x="157" y="318" ' + F + ' font-size="8.6" letter-spacing="2.2" fill="#e9cf99">OUR COLOURED IDENTITY</text>' +
+      '<path d="M120 372 Q157 360 194 372" fill="none" stroke="url(#gold' + u + ')" stroke-width="1.2"/>' +
+      '<text x="157" y="394" ' + F + ' font-size="9.5" letter-spacing="3.2" fill="url(#gold' + u + ')">THE COLOURED CONSCIOUS</text>' +
+      '<text x="157" y="408" ' + F + ' font-size="7.6" letter-spacing="2.6" fill="#e9cf99" opacity="0.85">VINCENT HENDRICKS</text>' +
+      '</svg>';
+  }
+  function coverSpineSvg(){
+    var bands = "";
+    [36, 42, 56, 62, 330, 336, 350, 356].forEach(function(y){
+      bands += '<rect x="0" y="' + y + '" width="52" height="2" fill="url(#sgold)"/>';
+    });
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 390" preserveAspectRatio="none">' +
+      '<defs><linearGradient id="sgold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#94651f"/><stop offset="0.5" stop-color="#f8e4a8"/><stop offset="1" stop-color="#94651f"/></linearGradient>' +
+      '<linearGradient id="slea" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#06182b"/><stop offset="0.45" stop-color="#16456f"/><stop offset="1" stop-color="#08203a"/></linearGradient>' +
+      '<filter id="sgrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4"/><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 -0.14"/></filter></defs>' +
+      '<rect width="52" height="390" fill="url(#slea)"/><rect width="52" height="390" filter="url(#sgrain)"/>' + bands +
+      '<text transform="translate(27 207) rotate(90)" text-anchor="middle" font-family="\'Libre Caslon Text\', Georgia, serif" font-size="15" font-weight="700" letter-spacing="3.2" fill="url(#sgold)">THE COLOURED BIBLE</text>' +
+      '<rect x="24.4" y="14" width="3.2" height="14" fill="url(#sgold)"/><rect x="19.5" y="18" width="13" height="3.2" fill="url(#sgold)"/>' +
+      '</svg>';
+  }
+  function coverFaceHtml(u){
+    return USE_COVER_IMAGE ? '<img src="cover.jpg" alt="Book cover">' : coverFaceSvg(u);
+  }
+  (function buildCoverScene(){
+    var scene = document.getElementById("coverScene");
+    if (!scene) return;
+    scene.innerHTML =
+      '<div class="cover3d-shadow"></div>' +
+      '<div class="book3d">' +
+        '<div class="face backc"></div>' +
+        '<div class="face fore"></div>' +
+        '<div class="face top"></div>' +
+        '<div class="face spine">' + coverSpineSvg() + '</div>' +
+        '<div class="face front">' + coverFaceHtml("g") + '</div>' +
+      '</div>';
+  })();
+
   // ---------- Cover gate (closed book) ----------
   var coverGate = $("coverGate");
   coverGate.addEventListener("click", function(){
-    coverGate.style.display = "none";
+    if (coverGate.classList.contains("opening")) return;
+    coverGate.classList.add("opening");
+    setTimeout(function(){ coverGate.style.display = "none"; }, 560);
   });
 
   // ---------- Access gate ----------
