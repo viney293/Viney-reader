@@ -3,7 +3,7 @@
  * Pages (index.html, buy.html) are fetched network-first, so readers get the
  * newest book whenever they are online, and the cached copy when they are not.
  */
-const CACHE_VERSION = "vineys-2026-11-11-v1";
+const CACHE_VERSION = "vineys-2026-11-12-b1";
 const CACHE_NAME = CACHE_VERSION;
 
 const CORE_ASSETS = [
@@ -12,13 +12,15 @@ const CORE_ASSETS = [
   "buy.html",
   "manifest.json",
   "cover.jpg",
+  "cover3d.jpg",
+  "articles.json",
   "icons/favicon-16.png",
   "icons/favicon-32.png",
   "icons/apple-touch-icon.png"
 ];
 
 // Never cached, never served from cache (admin tool and payment checks)
-const NEVER_CACHE = ["keygen.html"];
+const NEVER_CACHE = ["keygen.html", "add-article.html"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -88,7 +90,8 @@ self.addEventListener("fetch", (event) => {
   }
 
   const isPage = request.mode === "navigate" ||
-    url.pathname.endsWith(".html") || url.pathname.endsWith("/") || url.pathname.endsWith("manifest.json");
+    url.pathname.endsWith(".html") || url.pathname.endsWith("/") || url.pathname.endsWith("manifest.json") ||
+    url.pathname.endsWith("articles.json");
 
   event.respondWith(isPage ? networkFirst(request) : staleWhileRevalidate(request));
 });

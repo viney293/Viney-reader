@@ -7,6 +7,7 @@
 <meta name="description" content="Vineys Reader — a page-turning book reader.">
 <meta name="theme-color" content="#123a56">
 <link rel="manifest" href="manifest.json">
+<link rel="preload" as="image" href="cover3d.jpg">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -566,6 +567,61 @@
     .flip-leaf.animating { transition: none !important; }
     .flip-leaf.animating .shine { animation: none !important; }
   }
+
+  /* ---------- New 3D cover image (The Coloured Bible) ---------- */
+  .cover3d-scene.is-image { width:auto; height:auto; perspective:none; }
+  .cover3d-image {
+    display:block; width:auto; height:auto;
+    max-width:min(440px, 92vw); max-height:76vh;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 91%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 3%, #000 92%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 91%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 3%, #000 92%, transparent 100%);
+    mask-composite: intersect;
+    animation: bookFloat 5s ease-in-out infinite;
+    transition: transform 0.6s cubic-bezier(.2,.7,.2,1);
+  }
+  .cover-gate.opening .cover3d-image { animation:none; transform: scale(1.12); }
+  .cover-flat.cover-flat-3d {
+    width:100%; height:100%; aspect-ratio:auto; border-radius:0; box-shadow:none; background:none;
+    display:flex; align-items:center; justify-content:center; overflow:visible;
+  }
+  .cover-flat.cover-flat-3d img {
+    width:100%; height:100%; object-fit:contain; display:block;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 91%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 3%, #000 92%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(to right, transparent 0, #000 9%, #000 91%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 3%, #000 92%, transparent 100%);
+    mask-composite: intersect;
+  }
+  .single-page-mode .cover-flat.cover-flat-3d { width:100%; }
+
+  /* ---------- Extras: bonus articles, comments to the author, message to the author ---------- */
+  .extras-btn { position:relative; }
+  .extras-dot { display:none; position:absolute; top:-4px; right:-4px; width:11px; height:11px; border-radius:50%; background:#d8512f; border:2px solid #f2f9ff; }
+  .extras-btn.has-new .extras-dot { display:block; }
+  .modal.extras-modal { width:min(620px, 94vw); max-height:88vh; padding:18px; gap:12px; }
+  .extras-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .extras-head h2 { margin:0; }
+  .extras-body { overflow:auto; display:flex; flex-direction:column; gap:10px; min-height:220px; padding-right:2px; }
+  .ex-note { font-family:'Inter', sans-serif; font-size:12.5px; color:#3f6a8a; line-height:1.5; margin:0; }
+  .ex-ok { font-family:'Inter', sans-serif; font-size:13px; color:#1d6b3a; background:#e6f5ec; border:1px solid #b6dec5; border-radius:6px; padding:9px 11px; line-height:1.45; }
+  .ex-error { font-family:'Inter', sans-serif; font-size:12px; color:#b5432f; min-height:16px; }
+  .ex-label { font-family:'Inter', sans-serif; font-size:12px; color:#3f6a8a; margin-bottom:-4px; }
+  .ex-text { min-height:140px; resize:vertical; line-height:1.5; font-family:'Inter', sans-serif; }
+  .ex-card { text-align:left; width:100%; background:#fff; border:1px solid #a8cbe6; border-radius:8px; padding:12px 14px; cursor:pointer; display:flex; flex-direction:column; gap:4px; font-family:'Inter', sans-serif; color:var(--ink); }
+  .ex-card:hover { background:#f2f9ff; }
+  .ex-card .ex-title { font-family:'Libre Caslon Text', serif; font-weight:700; font-size:16px; color:var(--accent); }
+  .ex-card .ex-date { font-size:11.5px; color:#4a7391; }
+  .ex-pill { display:inline-block; background:#d8512f; color:#fff; font-family:'Inter', sans-serif; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:10px; margin-left:8px; vertical-align:middle; letter-spacing:0.03em; }
+  .ex-article { font-family:'Libre Caslon Text', serif; color:var(--ink); font-size:17px; line-height:1.75; text-align:left; }
+  .ex-article .ex-atitle { font-size:22px; line-height:1.3; margin:6px 0 4px; color:var(--accent); font-weight:700; }
+  .ex-article .ex-adate { font-family:'Inter', sans-serif; font-size:12px; color:#4a7391; margin:0 0 14px; }
+  .ex-article p { margin:0 0 1em 0; text-indent:0; }
+  .ex-article .ex-h3 { font-size:18px; margin:1.2em 0 0.5em; color:var(--accent); }
+  .chrome-btn.ex-send { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; padding:12px 14px; }
+  .chrome-btn.ex-send:hover { background:var(--accent-light); }
+  .ex-mine { border-top:1px solid #cfe3f3; padding-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .ex-mine-item { background:#fff; border:1px solid #d3e6f4; border-radius:6px; padding:8px 10px; font-family:'Inter', sans-serif; font-size:12.5px; color:var(--ink); line-height:1.45; white-space:pre-wrap; }
+  .ex-mine-item b { display:block; font-size:11.5px; color:#4a7391; font-weight:600; margin-bottom:2px; white-space:normal; }
 </style>
 </head>
 <body>
@@ -606,6 +662,7 @@
         <button class="chrome-btn" id="pickBtn" title="Tap a sentence to start reading from there">&#128205; Start here</button>
         <button class="chrome-btn" id="narrateBtn">&#128266; Read aloud</button>
         <button class="chrome-btn" id="pauseBtn" style="display:none;">&#9208; Pause</button>
+        <button class="chrome-btn extras-btn" id="extrasBtn" title="Bonus articles, comments and messages to the author">&#9733; Extras<span class="extras-dot"></span></button>
         <button class="chrome-btn" id="voiceSettingsBtn" title="Voices, pitch and speed">&#9881; Voice</button>
       </div>
     </div>
@@ -702,6 +759,21 @@
         <button class="chrome-btn" id="cancelVoice">Cancel</button>
         <button class="chrome-btn primary" id="saveVoice">Save</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="extrasBackdrop">
+    <div class="modal extras-modal" role="dialog" aria-modal="true" aria-labelledby="extrasTitle">
+      <div class="extras-head">
+        <h2 id="extrasTitle">Extras</h2>
+        <button class="chrome-btn" id="extrasClose" type="button" aria-label="Close">&times; Close</button>
+      </div>
+      <div class="btn-group extras-tabs" role="tablist" aria-label="Extras">
+        <button type="button" role="tab" data-tab="articles" class="active">Bonus articles</button>
+        <button type="button" role="tab" data-tab="comments">Comments</button>
+        <button type="button" role="tab" data-tab="message">Message</button>
+      </div>
+      <div class="extras-body" id="extrasBody" aria-live="polite"></div>
     </div>
   </div>
 
@@ -2202,7 +2274,9 @@
     if (!pageObj) return { content: "", folio: "" };
     if (pageObj.type === "cover"){
       return {
-        content: '<div class="cover-flat">' + coverFaceHtml('p') + '</div>',
+        content: COVER_3D_IMAGE
+          ? '<div class="cover-flat cover-flat-3d"><img src="' + COVER_3D_IMAGE + '" alt="The Coloured Bible, book cover"></div>'
+          : '<div class="cover-flat">' + coverFaceHtml('p') + '</div>',
         folio: ""
       };
     }
@@ -3201,6 +3275,8 @@
   // ---------- Bible-style cover art (generated, no image file needed) ----------
   // Set USE_COVER_IMAGE = true to put your own cover.jpg on the front instead.
   var USE_COVER_IMAGE = false;
+  // The new 3D book-cover picture. Set to "" to go back to the generated cover.
+  var COVER_3D_IMAGE = "cover3d.jpg";
   function coverFaceSvg(u){
     var rays = "";
     for (var i = 0; i < 28; i++){
@@ -3269,6 +3345,11 @@
   (function buildCoverScene(){
     var scene = document.getElementById("coverScene");
     if (!scene) return;
+    if (COVER_3D_IMAGE){
+      scene.classList.add("is-image");
+      scene.innerHTML = '<img class="cover3d-image" src="' + COVER_3D_IMAGE + '" alt="The Coloured Bible by Vincent Hendricks, book cover">';
+      return;
+    }
     scene.innerHTML =
       '<div class="cover3d-shadow"></div>' +
       '<div class="book3d">' +
@@ -3296,7 +3377,7 @@
   var lockDevNote = $("lockDevNote");
   $("lockBuyLink").href = BUY_PAGE_URL;
 
-  function grantAccess(){ lockScreen.style.display = "none"; }
+  function grantAccess(){ lockScreen.style.display = "none"; try { exCheckNew(); } catch(e){} }
 
   // Keys you issue yourself (for EFT / Capitec sales) are checked against
   // keys.json, which holds only fingerprints (SHA-256 hashes) of the valid
@@ -3396,6 +3477,238 @@
       attemptUnlock(urlKey);
     }
   })();
+
+  // ---------- Extras: bonus articles, comments to the author, message to the author ----------
+  // Comments and messages are written inside the reader and then handed to WhatsApp,
+  // addressed to the author. The reader taps Send in WhatsApp to deliver them.
+  var AUTHOR_WHATSAPP = "27734296001";
+  var ARTICLES_URL = "articles.json";
+  var SEEN_KEY = "vineys_seen_articles", NAME_KEY = "vineys_reader_name", MYCOMMENTS_KEY = "vineys_my_comments";
+  var extras = { articles: null, status: "idle", tab: "articles", openIndex: -1, flash: "" };
+  var extrasBackdrop = $("extrasBackdrop"), extrasBody = $("extrasBody"), extrasBtn = $("extrasBtn");
+
+  function exEsc(s){
+    return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function exJson(k, d){ try { var v = JSON.parse(lsGet(k)); return v == null ? d : v; } catch(e){ return d; } }
+  function exSeen(){ var s = exJson(SEEN_KEY, []); return Array.isArray(s) ? s : []; }
+  function exMarkSeen(id){
+    var s = exSeen();
+    if (s.indexOf(id) === -1){ s.push(id); lsSet(SEEN_KEY, JSON.stringify(s)); }
+    exUpdateBadge();
+  }
+  function exUnseenCount(){
+    if (!extras.articles) return 0;
+    var s = exSeen();
+    return extras.articles.filter(function(a){ return s.indexOf(a.id) === -1; }).length;
+  }
+  function exUpdateBadge(){ extrasBtn.classList.toggle("has-new", exUnseenCount() > 0); }
+  function exFormatDate(d){
+    var dt = new Date(String(d) + "T00:00:00");
+    if (isNaN(dt.getTime())) return String(d || "");
+    try { return dt.toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" }); }
+    catch(e){ return String(d); }
+  }
+  function exLoadArticles(done){
+    if (extras.status !== "ok") extras.status = "loading";
+    fetch(ARTICLES_URL + "?v=" + Date.now(), { cache: "no-store" })
+      .then(function(r){ if (!r.ok) throw new Error("bad status"); return r.json(); })
+      .then(function(list){
+        if (!Array.isArray(list)) list = [];
+        list = list.filter(function(a){ return a && a.title && a.body; });
+        list.forEach(function(a){ if (!a.id) a.id = String(a.date || "") + "-" + a.title; });
+        list.sort(function(a, b){ return String(b.date || "").localeCompare(String(a.date || "")); });
+        extras.articles = list; extras.status = "ok";
+        exUpdateBadge();
+        if (done) done(true);
+      })
+      .catch(function(){
+        if (extras.status !== "ok") extras.status = "error";
+        if (done) done(false);
+      });
+  }
+  // Called once the reader is unlocked: quietly check for new articles so the Extras button can show a dot.
+  function exCheckNew(){ exLoadArticles(null); }
+
+  function exBodyHtml(text){
+    return String(text).replace(/\r/g, "").split(/\n{2,}/).map(function(p){
+      p = p.trim();
+      if (!p) return "";
+      if (p.indexOf("## ") === 0) return '<h3 class="ex-h3">' + exEsc(p.slice(3)) + '</h3>';
+      return '<p>' + exEsc(p).replace(/\n/g, "<br>") + '</p>';
+    }).join("");
+  }
+  function exCurrentChapter(){
+    var best = -1;
+    state.chapters.forEach(function(c, i){ if (c.idx <= state.current) best = i; });
+    return best;
+  }
+  function exSavedName(){ return lsGet(NAME_KEY) || ""; }
+  function exNameField(){
+    return '<label class="ex-label" for="exName">Your name (optional)</label>' +
+           '<input type="text" id="exName" class="goto-input" maxlength="60" autocomplete="name" placeholder="So the author knows who is writing" value="' + exEsc(exSavedName()) + '">';
+  }
+  function exFlashHtml(){
+    var f = extras.flash; extras.flash = "";
+    return f ? '<div class="ex-ok">' + exEsc(f) + '</div>' : "";
+  }
+  function exOpenWhatsApp(text){
+    var url = "https://wa.me/" + AUTHOR_WHATSAPP + "?text=" + encodeURIComponent(text);
+    var w = null;
+    try { w = window.open(url, "_blank"); } catch(e){}
+    if (!w) window.location.href = url;
+  }
+
+  function exRenderArticles(){
+    var html = "";
+    if (extras.status === "idle" || extras.status === "loading"){
+      html = '<p class="ex-note">Loading articles\u2026</p>';
+    } else if (extras.status === "error"){
+      html = '<p class="ex-note">Couldn\u2019t load the articles. Check your connection and try again.</p>' +
+             '<button type="button" class="chrome-btn" data-act="reload">Try again</button>';
+    } else if (!extras.articles.length){
+      html = '<p class="ex-note">No bonus articles yet. New ones will appear here.</p>';
+    } else if (extras.openIndex >= 0 && extras.articles[extras.openIndex]){
+      var a = extras.articles[extras.openIndex];
+      html = '<div><button type="button" class="chrome-btn" data-act="back">\u2039 All articles</button></div>' +
+             '<div class="ex-article"><h3 class="ex-atitle">' + exEsc(a.title) + '</h3>' +
+             '<p class="ex-adate">' + exEsc(exFormatDate(a.date)) + '</p>' + exBodyHtml(a.body) + '</div>';
+    } else {
+      var seen = exSeen();
+      html = '<p class="ex-note">New articles are added regularly. Tap one to read it.</p>' +
+        extras.articles.map(function(a, i){
+          var isNew = seen.indexOf(a.id) === -1;
+          return '<button type="button" class="ex-card" data-act="open" data-i="' + i + '">' +
+                 '<span class="ex-title">' + exEsc(a.title) + (isNew ? '<span class="ex-pill">NEW</span>' : '') + '</span>' +
+                 '<span class="ex-date">' + exEsc(exFormatDate(a.date)) + '</span></button>';
+        }).join("");
+    }
+    extrasBody.innerHTML = html;
+    extrasBody.scrollTop = 0;
+  }
+
+  function exRenderComments(){
+    var cur = exCurrentChapter();
+    var opts = '<option value="-1">General comment on the whole book</option>' +
+      state.chapters.map(function(c, i){
+        return '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + exEsc(c.title) + '</option>';
+      }).join("");
+    var mine = exJson(MYCOMMENTS_KEY, []);
+    var mineHtml = "";
+    if (Array.isArray(mine) && mine.length){
+      mineHtml = '<div class="ex-mine"><p class="ex-note">Your earlier comments (kept on this device only)</p>' +
+        mine.slice(0, 8).map(function(m){
+          return '<div class="ex-mine-item"><b>' + exEsc(m.where) + ' \u00b7 ' + exEsc(m.when) + '</b>' + exEsc(m.text) + '</div>';
+        }).join("") + '</div>';
+    }
+    extrasBody.innerHTML = exFlashHtml() +
+      '<label class="ex-label" for="exChapter">Which part of the book?</label>' +
+      '<select id="exChapter" class="goto-input">' + opts + '</select>' +
+      '<label class="ex-label" for="exText">Your comment</label>' +
+      '<textarea id="exText" class="goto-input ex-text" maxlength="1500" placeholder="What did you read, and what did it make you think?"></textarea>' +
+      exNameField() +
+      '<div class="ex-error" id="exError" aria-live="polite"></div>' +
+      '<button type="button" class="chrome-btn ex-send" data-act="send-comment">Send to Vincent on WhatsApp</button>' +
+      '<p class="ex-note">Your comment goes privately to the author. WhatsApp opens with it ready, and you tap Send there to deliver it.</p>' +
+      mineHtml;
+    extrasBody.scrollTop = 0;
+  }
+
+  function exRenderMessage(){
+    extrasBody.innerHTML = exFlashHtml() +
+      '<p class="ex-note">Write to the author. WhatsApp opens with your message ready, and you tap Send there to deliver it.</p>' +
+      '<label class="ex-label" for="exText">Your message</label>' +
+      '<textarea id="exText" class="goto-input ex-text" maxlength="1500" placeholder="Write your message"></textarea>' +
+      exNameField() +
+      '<div class="ex-error" id="exError" aria-live="polite"></div>' +
+      '<button type="button" class="chrome-btn ex-send" data-act="send-message">Send to Vincent on WhatsApp</button>';
+    extrasBody.scrollTop = 0;
+  }
+
+  function exRender(){
+    [].forEach.call(extrasBackdrop.querySelectorAll(".extras-tabs button"), function(b){
+      var on = b.getAttribute("data-tab") === extras.tab;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    if (extras.tab === "articles") exRenderArticles();
+    else if (extras.tab === "comments") exRenderComments();
+    else exRenderMessage();
+  }
+
+  function exOpen(tab){
+    if (narration.active) stopNarration();
+    if (tab) extras.tab = tab;
+    extras.openIndex = -1;
+    extrasBackdrop.classList.add("open");
+    exRender();
+    exLoadArticles(function(){
+      if (extrasBackdrop.classList.contains("open") && extras.tab === "articles" && extras.openIndex < 0) exRender();
+    });
+  }
+  function exClose(){ extrasBackdrop.classList.remove("open"); }
+
+  function exSendComment(){
+    var sel = $("exChapter"), txt = $("exText"), err = $("exError");
+    var text = txt.value.trim();
+    if (!text){ err.textContent = "Write your comment first."; txt.focus(); return; }
+    var ci = parseInt(sel.value, 10);
+    var ch = ci >= 0 ? state.chapters[ci] : null;
+    var where = ch ? ch.title : "The whole book";
+    var head = ch ? 'Comment on "' + ch.title + '" (The Coloured Bible, p. ' + (ch.idx + 1) + ')'
+                  : 'Comment on The Coloured Bible';
+    var name = $("exName").value.trim();
+    lsSet(NAME_KEY, name);
+    var msg = head + ":\n\n" + text + (name ? "\n\n\u2014 " + name : "");
+    var mine = exJson(MYCOMMENTS_KEY, []);
+    if (!Array.isArray(mine)) mine = [];
+    mine.unshift({ where: where, when: new Date().toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }), text: text });
+    lsSet(MYCOMMENTS_KEY, JSON.stringify(mine.slice(0, 30)));
+    extras.flash = "WhatsApp is opening with your comment. Tap Send there to deliver it.";
+    exOpenWhatsApp(msg);
+    exRender();
+  }
+  function exSendMessage(){
+    var txt = $("exText"), err = $("exError");
+    var text = txt.value.trim();
+    if (!text){ err.textContent = "Write your message first."; txt.focus(); return; }
+    var name = $("exName").value.trim();
+    lsSet(NAME_KEY, name);
+    var msg = "Hi Vincent, a message from a reader of The Coloured Bible:\n\n" + text + (name ? "\n\n\u2014 " + name : "");
+    extras.flash = "WhatsApp is opening with your message. Tap Send there to deliver it.";
+    exOpenWhatsApp(msg);
+    exRender();
+  }
+
+  extrasBtn.addEventListener("click", function(){ exOpen(); });
+  $("extrasClose").addEventListener("click", exClose);
+  extrasBackdrop.addEventListener("click", function(e){ if (e.target === extrasBackdrop) exClose(); });
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape" && extrasBackdrop.classList.contains("open")) exClose();
+  });
+  [].forEach.call(extrasBackdrop.querySelectorAll(".extras-tabs button"), function(b){
+    b.addEventListener("click", function(){
+      extras.tab = b.getAttribute("data-tab");
+      extras.openIndex = -1;
+      exRender();
+    });
+  });
+  extrasBody.addEventListener("click", function(e){
+    var t = e.target.closest ? e.target.closest("[data-act]") : null;
+    if (!t) return;
+    var act = t.getAttribute("data-act");
+    if (act === "open"){
+      extras.openIndex = parseInt(t.getAttribute("data-i"), 10);
+      var a = extras.articles && extras.articles[extras.openIndex];
+      if (a) exMarkSeen(a.id);
+      exRender();
+    } else if (act === "back"){ extras.openIndex = -1; exRender(); }
+    else if (act === "reload"){ extras.status = "loading"; exRender(); exLoadArticles(function(){ exRender(); }); }
+    else if (act === "send-comment"){ exSendComment(); }
+    else if (act === "send-message"){ exSendMessage(); }
+  });
+  // Already unlocked on a return visit? Check for new articles now.
+  if (lockScreen.style.display === "none") exCheckNew();
 
   // ---------- Init ----------
   $("brandTitle").textContent = state.title;

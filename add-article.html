@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Add a bonus article</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; background:#eaf5fc; color:#17293c; margin:0; padding:20px; }
+  .card { max-width:760px; margin:0 auto; background:#fff; border:1px solid #a8cbe6; border-radius:10px; padding:22px; }
+  h1 { margin:0 0 6px; font-size:22px; color:#15486c; }
+  p.note { font-size:13px; color:#3f6a8a; line-height:1.5; margin:4px 0 14px; }
+  label { display:block; font-size:13px; font-weight:bold; color:#15486c; margin:14px 0 5px; }
+  input, textarea { width:100%; box-sizing:border-box; padding:10px; border:1px solid #a8cbe6; border-radius:6px; font-size:15px; font-family:inherit; }
+  textarea { min-height:200px; resize:vertical; line-height:1.5; }
+  textarea.small { min-height:110px; font-size:12px; font-family:monospace; }
+  button { margin-top:16px; background:#15486c; color:#fff; border:0; border-radius:6px; padding:12px 18px; font-size:15px; font-weight:bold; cursor:pointer; }
+  button.alt { background:#2f74a3; margin-left:8px; }
+  .err { color:#b5432f; font-size:13px; margin-top:10px; min-height:18px; }
+  .ok { color:#1d6b3a; font-size:13px; margin-top:10px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Add a bonus article</h1>
+  <p class="note">Fill in the article, press Build, then copy the result into your <b>articles.json</b> file on GitHub (replace everything in that file). Leave a blank line between paragraphs. Start a line with <b>## </b> to make a sub-heading.</p>
+
+  <label for="title">Title</label>
+  <input id="title" type="text" placeholder="Article title">
+
+  <label for="date">Date</label>
+  <input id="date" type="date">
+
+  <label for="body">Article text</label>
+  <textarea id="body" placeholder="Paste or type the article here"></textarea>
+
+  <label for="existing">Your current articles.json (paste it here so older articles are kept)</label>
+  <textarea id="existing" class="small" placeholder="Open articles.json on GitHub, copy everything, and paste it here. Leave empty if this is the very first article."></textarea>
+
+  <button id="build" type="button">Build articles.json</button>
+  <div class="err" id="err"></div>
+
+  <label for="out">Result</label>
+  <textarea id="out" class="small" readonly></textarea>
+  <button id="copy" type="button" class="alt">Copy result</button>
+  <div class="ok" id="ok"></div>
+</div>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  $("date").value = new Date().toISOString().slice(0, 10);
+  function slug(s){ return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60); }
+  $("build").addEventListener("click", function(){
+    var err = $("err"); err.textContent = ""; $("ok").textContent = "";
+    var title = $("title").value.trim(), date = $("date").value, body = $("body").value.replace(/\r/g, "").trim();
+    if (!title || !date || !body){ err.textContent = "Please fill in the title, date and article text."; return; }
+    var list = [];
+    var existing = $("existing").value.trim();
+    if (existing){
+      try { list = JSON.parse(existing); if (!Array.isArray(list)) throw new Error(); }
+      catch(e){ err.textContent = "The current articles.json you pasted isn't valid. Copy the whole file again."; return; }
+    }
+    var id = date + "-" + slug(title);
+    list = list.filter(function(a){ return a && a.id !== id; });
+    list.unshift({ id: id, date: date, title: title, body: body });
+    $("out").value = JSON.stringify(list, null, 2);
+  });
+  $("copy").addEventListener("click", function(){
+    var out = $("out");
+    if (!out.value){ $("err").textContent = "Press Build first."; return; }
+    out.select();
+    var done = function(){ $("ok").textContent = "Copied. Now paste it into articles.json on GitHub and commit."; };
+    if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(out.value).then(done, function(){ document.execCommand("copy"); done(); }); }
+    else { document.execCommand("copy"); done(); }
+  });
+})();
+</script>
+</body>
+</html>
